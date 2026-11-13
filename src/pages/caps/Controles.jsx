@@ -2,25 +2,28 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useApp } from '../../AppContext.jsx'
 import { db } from '../../lib/db.js'
-import { fechaCorta, hoyISO, sumarDias, difDias, edad } from '../../lib/fechas.js'
+import { fechaCorta, habil, hoyISO, sumarDias, difDias, edad } from '../../lib/fechas.js'
 import { nombreCompleto } from '../../lib/pacientes.js'
 import { registrarControlRealizado, registrarControlSinAgenda } from '../../lib/circuito.js'
+import { agendarSolicitud } from '../../lib/ciudadano.js'
 import { Tarjeta, Vacio, Cargando } from '../../components/Comunes.jsx'
 
 // Seguimiento de crónicos en el primer nivel (Meta 2: diabéticos con control 45% → 60%).
 export default function Controles() {
   const { perfil, notificar } = useApp()
   const [soloSinControl, setSoloSinControl] = useState(true)
+  const [fechas, setFechas] = useState({})
   const datos = useLiveQuery(async () => {
-    const [controles, pacientes] = await Promise.all([
+    const [solicitudes, controles, pacientes] = await Promise.all([
+      db.controles.where('capsId').equals(perfil.efectorId).filter((c) => c.estado === 'solicitado').sortBy('solicitadoEn'),
       db.controles.where('capsId').equals(perfil.efectorId).filter((c) => c.estado === 'agendado').sortBy('fecha'),
       db.pacientes.where('capsId').equals(perfil.efectorId).toArray(),
     ])
-    return { controles, pacientes, porId: Object.fromEntries(pacientes.map((p) => [p.id, p])) }
+    return { solicitudes, controles, pacientes, porId: Object.fromEntries(pacientes.map((p) => [p.id, p])) }
   }, [perfil.efectorId])
 
   if (!datos) return <Cargando />
-  const { controles, pacientes, porId } = datos
+  const { solicitudes, controles, pacientes, porId } = datos
   const hoy = hoyISO()
   const hace12m = sumarDias(hoy, -365)
 
@@ -45,7 +48,30 @@ export default function Controles() {
     <>
       <div className="encabezado"><h1>Crónicos y controles</h1></div>
 
-      <Tarjeta titulo="Controles indicados por el hospital">
+      {solicitudes.length > 0 && (
+        <Tarjeta titulo={`Pedidos de pacientes desde la app (${solicitudes.length})`} className="tarjeta-alerta">
+          <ul className="lista">
+            {solicitudes.map((c) => {
+              const p = porId[c.pacienteId]
+              const f = fechas[c.id] ?? habil(sumarDias(hoy, 2))
+              return (
+                <li key={c.id} className="item item-estatico item-solicitud">
+                  <div className="item-principal">
+                    <strong>{nombreCompleto(p)}</strong>
+                    <span className="item-sub">{c.motivo} · prefiere {c.preferencia}</span>
+                  </div>
+                  <div className="fila-agendar">
+                    <input type="date" min={hoy} value={f} onChange={(e) => setFechas((x) => ({ ...x, [c.id]: e.target.value }))} aria-label="Fecha del control" />
+                    <button className="btn btn-chico btn-primario" onClick={async () => { await agendarSolicitud(c.id, f); notificar(`Control agendado. ${p?.nombre ?? 'El paciente'} lo ve en la app.`) }}>Agendar</button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </Tarjeta>
+      )}
+
+      <Tarjeta titulo="Controles agendados">
         {controles.length === 0 ? (
           <Vacio>No hay controles agendados por contrarreferencia.</Vacio>
         ) : (

@@ -332,3 +332,23 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
 .pasos-ruta li span { display: block; }
 .leaflet-container { font: inherit; background: var(--gris-fondo); }
 .leaflet-tooltip { font-weight: 600; }
+
+/* ---------- Camino del ciudadano ---------- */
+.banner-accion { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.turno-paciente { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--borde); border-left: 4px solid var(--primario); border-radius: 10px; background: var(--superficie); }
+.turno-paciente-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.turno-paciente-esp { font-size: 1.1rem; }
+.turno-paciente .turno-fecha::first-letter { text-transform: uppercase; }
+.turno-paciente .botonera { margin-top: 4px; }
+.confirmar { display: flex; flex-direction: column; gap: 8px; }
+.texto-error { color: var(--error) !important; }
+.oculto { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.opciones-canal { display: flex; flex-wrap: wrap; gap: 8px; }
+.opciones-canal .chip { display: inline-flex; align-items: center; }
+.opciones-canal .chip:focus-within { outline: 3px solid color-mix(in srgb, var(--primario) 40%, transparent); }
+.primera-mayus::first-letter { text-transform: uppercase; }
+.pedido-control { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; background: var(--gris-fondo); }
+.indicacion .item-principal > span:not(.item-sub) { font-size: 1rem; }
+.item-solicitud { flex-wrap: wrap; }
+.fila-agendar { display: flex; gap: 8px; align-items: center; }
+.fila-agendar input { width: auto; }

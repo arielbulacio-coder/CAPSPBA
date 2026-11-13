@@ -12,6 +12,9 @@ import Agenda from './pages/hospital/Agenda.jsx'
 import Atencion from './pages/hospital/Atencion.jsx'
 import Cupos from './pages/hospital/Cupos.jsx'
 import Indicadores from './pages/gestion/Indicadores.jsx'
+import IngresoPaciente from './pages/paciente/IngresoPaciente.jsx'
+import MisTurnos from './pages/paciente/MisTurnos.jsx'
+import MiSalud from './pages/paciente/MiSalud.jsx'
 
 // El mapa (Leaflet) se carga sólo al abrir la navegación.
 const Navegar = lazy(() => import('./pages/Navegar.jsx'))
@@ -30,6 +33,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={perfil ? <Navigate to={`/${perfil.rol}`} replace /> : <Inicio />} />
       {!perfil && <Route path="/cerca" element={<Cercanos />} />}
+      {!perfil && <Route path="/paciente/ingreso" element={<IngresoPaciente />} />}
       {!perfil && <Route path="/navegar/:id" element={conCarga(<Navegar />)} />}
       <Route element={<Layout />}>
         {perfil && <Route path="/cerca" element={<Cercanos enLayout />} />}
@@ -42,6 +46,8 @@ export default function App() {
         <Route path="/hospital/atencion/:id" element={<Requiere rol="hospital"><Atencion /></Requiere>} />
         <Route path="/hospital/cupos" element={<Requiere rol="hospital"><Cupos /></Requiere>} />
         <Route path="/gestion" element={<Requiere rol="gestion"><Indicadores /></Requiere>} />
+        <Route path="/paciente" element={<Requiere rol="paciente"><MisTurnos /></Requiere>} />
+        <Route path="/paciente/salud" element={<Requiere rol="paciente"><MiSalud /></Requiere>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

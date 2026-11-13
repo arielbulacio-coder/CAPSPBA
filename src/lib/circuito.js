@@ -86,11 +86,12 @@ async function liberarCupo(d) {
 }
 
 /** Respuesta del paciente al aviso multicanal. */
-export async function registrarRespuesta(derivacionId, respuesta) {
+/** Respuesta del paciente: la registra el CAPS (`origen = 'caps'`) o la da el paciente desde la app. */
+export async function registrarRespuesta(derivacionId, respuesta, origen = 'caps') {
   let fechaAnterior = null
   await db.transaction('rw', db.cupos, db.derivaciones, async () => {
     const d = await db.derivaciones.get(derivacionId)
-    const aviso = { ...d.aviso, enviado: true, respuesta }
+    const aviso = { ...d.aviso, enviado: true, respuesta, respondioPor: origen, respondioEn: Date.now() }
     if (respuesta === 'confirmado') {
       await db.derivaciones.update(d.id, { aviso, estado: 'confirmado' })
     } else if (respuesta === 'reprogramar') {

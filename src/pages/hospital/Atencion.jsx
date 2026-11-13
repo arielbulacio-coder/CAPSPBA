@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useApp } from '../../AppContext.jsx'
 import { db } from '../../lib/db.js'
-import { fechaLarga, fechaCorta, fechaHora, edad, hoyISO, sumarDias } from '../../lib/fechas.js'
+import { fechaLarga, fechaCorta, fechaHora, edad, habil, hoyISO, sumarDias } from '../../lib/fechas.js'
 import { nombreCompleto } from '../../lib/pacientes.js'
 import { marcarAusente, marcarAtendido, registrarContrarreferencia } from '../../lib/circuito.js'
 import { Campo, EstadoBadge, Tarjeta, Cargando } from '../../components/Comunes.jsx'
@@ -14,7 +14,7 @@ export default function Atencion() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { notificar } = useApp()
-  const [cr, setCr] = useState({ diagnostico: '', indicacion: '', proximoControl: sumarDias(hoyISO(), 90), profesional: 'Dr. Martín Acosta' })
+  const [cr, setCr] = useState({ diagnostico: '', indicacion: '', proximoControl: habil(sumarDias(hoyISO(), 90)), profesional: 'Dr. Martín Acosta' })
   const [errores, setErrores] = useState({})
 
   const datos = useLiveQuery(async () => {
@@ -108,7 +108,7 @@ export default function Atencion() {
             <Campo label="3. Próximo control en el CAPS" error={errores.proximoControl}>
               <div className="fila-plazos">
                 {PLAZOS.map((dias) => {
-                  const f = sumarDias(hoyISO(), dias)
+                  const f = habil(sumarDias(hoyISO(), dias))
                   return (
                     <button type="button" key={dias} className={`chip ${cr.proximoControl === f ? 'activo' : ''}`} onClick={() => setCr((c) => ({ ...c, proximoControl: f }))}>
                       {dias} días

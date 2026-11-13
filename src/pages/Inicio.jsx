@@ -56,6 +56,12 @@ export default function Inicio() {
         <span className="btn btn-primario">Buscar cerca mío</span>
       </Link>
 
+      <Link to="/paciente/ingreso" className="perfil perfil-destacado">
+        <h2>Mis turnos y controles</h2>
+        <p>Si te derivaron a un especialista: mirá tu turno, confirmalo o pedí otro día, recibí recordatorios y las indicaciones para tu CAPS.</p>
+        <span className="btn btn-primario">Ingresar con mi DNI</span>
+      </Link>
+
       <h2 className="seccion">Ingreso de equipos de salud</h2>
       <div className="perfiles">
         <section className={`perfil ${rol === 'caps' ? 'perfil-activo' : ''}`}>

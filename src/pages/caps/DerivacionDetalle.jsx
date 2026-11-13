@@ -108,7 +108,7 @@ export default function DerivacionDetalle() {
               {d.aviso.canal !== 'papel' && <button className="btn" onClick={copiar}>Copiar mensaje</button>}
               {d.aviso.canal !== 'papel' && <button className="btn" onClick={() => window.print()}>Imprimir comprobante</button>}
             </div>
-            {d.aviso.canal !== 'papel' && !p.telefono && <p className="campo-error">El paciente no tiene teléfono cargado: entregale el comprobante impreso.</p>}
+            {!['papel', 'app'].includes(d.aviso.canal) && !p.telefono && <p className="campo-error">El paciente no tiene teléfono cargado: entregale el comprobante impreso.</p>}
             {d.aviso.enviado && d.estado === 'turno_asignado' && (
               <>
                 <p className="nota">Aviso enviado. ¿Qué respondió?</p>
@@ -118,6 +118,9 @@ export default function DerivacionDetalle() {
                   <button className="btn btn-peligro" onClick={() => responder('cancelado')}>No va a ir</button>
                 </div>
               </>
+            )}
+            {d.aviso.respondioPor === 'app' && d.aviso.respuesta && (
+              <p className="banner-info">El paciente respondió desde la app: <strong>{d.aviso.respuesta === 'confirmado' ? 'confirmó el turno' : d.aviso.respuesta}</strong>.</p>
             )}
             {d.estado === 'confirmado' && (
               <div className="botonera">

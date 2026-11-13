@@ -22,6 +22,12 @@ export function sumarDias(iso, dias) {
   return aISO(d)
 }
 
+/** Si la fecha cae sábado o domingo, la pasa al lunes siguiente. */
+export function habil(iso) {
+  const dow = desdeISO(iso).getDay()
+  return dow === 6 ? sumarDias(iso, 2) : dow === 0 ? sumarDias(iso, 1) : iso
+}
+
 /** Días hábiles (lun–vie) entre hoy+desde y hoy+hasta, ambos inclusive. */
 export function diasHabiles(desde, hasta) {
   const out = []

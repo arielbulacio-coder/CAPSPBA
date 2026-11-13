@@ -34,6 +34,7 @@ export const ESTADOS = {
 export const ESPECIALIDADES = ['Cardiología', 'Endocrinología', 'Nefrología', 'Oftalmología']
 
 export const CANALES = {
+  app: 'App Red CAPS',
   papel: 'Comprobante en papel',
   sms: 'SMS',
   whatsapp: 'WhatsApp',

@@ -17,6 +17,11 @@ const NAV = {
     ['/cerca', 'Establecimientos cercanos'],
   ],
   gestion: [['/gestion', 'Indicadores', true]],
+  paciente: [
+    ['/paciente', 'Mis turnos', true],
+    ['/paciente/salud', 'Mi salud'],
+    ['/cerca', 'CAPS cercanos'],
+  ],
 }
 
 export default function Layout() {
@@ -38,10 +43,10 @@ export default function Layout() {
             <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="28" height="28" />
             <div>
               <strong>Red CAPS</strong>
-              <span className="marca-sub">{efector ? `${efector.nombre} · ${efector.partido}` : perfil?.rol === 'gestion' ? 'Gestión provincial' : ''}</span>
+              <span className="marca-sub">{perfil?.rol === 'paciente' ? `${perfil.nombre} · ${efector?.nombre ?? ''}` : efector ? `${efector.nombre} · ${efector.partido}` : perfil?.rol === 'gestion' ? 'Gestión provincial' : ''}</span>
             </div>
           </div>
-          <button className="btn-link topbar-salir" onClick={salir}>Cambiar perfil</button>
+          <button className="btn-link topbar-salir" onClick={salir}>{perfil?.rol === 'paciente' ? 'Salir' : 'Cambiar perfil'}</button>
         </div>
         <nav className="tabs">
           {(NAV[perfil?.rol] ?? []).map(([to, label, end]) => (

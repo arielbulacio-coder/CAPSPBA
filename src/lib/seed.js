@@ -1,4 +1,4 @@
-import { diasHabiles, hoyISO, sumarDias, desdeISO } from './fechas.js'
+import { diasHabiles, habil, hoyISO, sumarDias, desdeISO } from './fechas.js'
 import { masCercanos } from './geo.js'
 
 // Pacientes y derivaciones FICTICIOS para demostrar el circuito. Los establecimientos
@@ -82,6 +82,8 @@ export async function cargarDatosDemo(db) {
     { p: 'P7', esp: 'Nefrología', hace: 8, turnoDia: 2, estado: 'confirmado' },
     { p: 'P11', esp: 'Cardiología', hace: 3, turnoDia: 1, estado: 'turno_asignado' },
     { p: 'P3', esp: 'Endocrinología', hace: 2, turnoDia: 3, estado: 'confirmado' },
+    { p: 'P1', esp: 'Endocrinología', hace: 45, turnoDia: -38, estado: 'contrarreferido', cr: ['DBT2 con control regular', 'Metformina 850 mg con almuerzo y cena. Caminar 30 minutos por día.', 60] },
+    { p: 'P1', esp: 'Cardiología', hace: 1, turnoDia: 4, estado: 'turno_asignado' },
   ]
 
   const derivaciones = []
@@ -102,7 +104,7 @@ export async function cargarDatosDemo(db) {
     }
     if (h.cr) {
       const [diagnostico, indicacion, dias] = h.cr
-      const proximoControl = sumarDias(cupo.fecha, dias)
+      const proximoControl = habil(sumarDias(cupo.fecha, dias))
       d.contrarreferencia = { diagnostico, indicacion, proximoControl, profesional: 'Dr. Martín Acosta', fecha: ts(-h.turnoDia, 12) }
       controles.push({ id: `K-demo-${i + 1}`, pacienteId: pac.id, capsId: pac.capsId, fecha: proximoControl, motivo: `Control post ${h.esp.toLowerCase()}: ${indicacion}`, derivacionId: id, estado: 'agendado' })
     }
