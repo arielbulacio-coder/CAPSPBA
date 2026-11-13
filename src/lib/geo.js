@@ -25,8 +25,6 @@ export function formatoDistancia(km) {
   return `${km.toLocaleString('es-AR', { maximumFractionDigits: km < 10 ? 1 : 0 })} km`
 }
 
-export const enlaceComoLlegar = (e) => `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lon}`
-
 const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /** Búsqueda por nombre o partido, tolerante a tildes; todas las palabras deben aparecer. */
@@ -47,7 +45,13 @@ const MENSAJES_ERROR = {
 
 /** Ubicación del dispositivo bajo demanda (sólo se pide cuando la persona toca el botón). */
 export function useUbicacion() {
-  const [estado, setEstado] = useState({ cargando: false, coords: null, error: null })
+  const [estado, setEstado] = useState(() => {
+    try {
+      return { cargando: false, coords: JSON.parse(sessionStorage.getItem('ubicacion')), error: null }
+    } catch {
+      return { cargando: false, coords: null, error: null }
+    }
+  })
   const pedir = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setEstado({ cargando: false, coords: null, error: 'Este dispositivo no permite obtener la ubicación.' })
@@ -55,7 +59,15 @@ export function useUbicacion() {
     }
     setEstado((s) => ({ ...s, cargando: true, error: null }))
     navigator.geolocation.getCurrentPosition(
-      (p) => setEstado({ cargando: false, coords: { lat: p.coords.latitude, lon: p.coords.longitude, precision: p.coords.accuracy }, error: null }),
+      (p) => {
+        const coords = { lat: p.coords.latitude, lon: p.coords.longitude, precision: p.coords.accuracy }
+        try {
+          sessionStorage.setItem('ubicacion', JSON.stringify(coords))
+        } catch {
+          /* sin almacenamiento: sólo en memoria */
+        }
+        setEstado({ cargando: false, coords, error: null })
+      },
       (e) => setEstado({ cargando: false, coords: null, error: MENSAJES_ERROR[e.code] ?? MENSAJES_ERROR[2] }),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 5 * 60_000 },
     )

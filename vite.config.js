@@ -34,6 +34,18 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,json,woff2}'],
         navigateFallback: 'index.html',
+        // Mapas ya vistos quedan disponibles sin conexión (caché acotado).
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'mapas',
+              expiration: { maxEntries: 400, maxAgeSeconds: 14 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

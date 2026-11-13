@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useApp } from './AppContext.jsx'
 import Layout from './components/Layout.jsx'
@@ -12,6 +13,10 @@ import Atencion from './pages/hospital/Atencion.jsx'
 import Cupos from './pages/hospital/Cupos.jsx'
 import Indicadores from './pages/gestion/Indicadores.jsx'
 
+// El mapa (Leaflet) se carga sólo al abrir la navegación.
+const Navegar = lazy(() => import('./pages/Navegar.jsx'))
+const conCarga = (el) => <Suspense fallback={<p className="vacio">Cargando mapa…</p>}>{el}</Suspense>
+
 function Requiere({ rol, children }) {
   const { perfil } = useApp()
   if (!perfil) return <Navigate to="/" replace />
@@ -24,8 +29,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={perfil ? <Navigate to={`/${perfil.rol}`} replace /> : <Inicio />} />
-      <Route path="/cerca" element={<Cercanos />} />
+      {!perfil && <Route path="/cerca" element={<Cercanos />} />}
+      {!perfil && <Route path="/navegar/:id" element={conCarga(<Navegar />)} />}
       <Route element={<Layout />}>
+        {perfil && <Route path="/cerca" element={<Cercanos enLayout />} />}
+        {perfil && <Route path="/navegar/:id" element={conCarga(<Navegar />)} />}
         <Route path="/caps" element={<Requiere rol="caps"><CapsDerivados /></Requiere>} />
         <Route path="/caps/nueva" element={<Requiere rol="caps"><NuevaDerivacion /></Requiere>} />
         <Route path="/caps/derivacion/:id" element={<Requiere rol="caps"><DerivacionDetalle /></Requiere>} />

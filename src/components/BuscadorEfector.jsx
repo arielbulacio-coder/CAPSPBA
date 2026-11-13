@@ -13,7 +13,10 @@ export default function BuscadorEfector({ tipo, valor, onElegir, origen = null, 
   const todos = useLiveQuery(() => db.efectores.where('tipo').equals(tipo).toArray(), [tipo], [])
   const ubic = useUbicacion()
   const [texto, setTexto] = useState('')
-  const referencia = ubic.coords ?? origen
+  // Con un origen fijo (el CAPS que deriva) se usa ese punto, salvo que se toque "Cerca mío".
+  const [pidioUbicacion, setPidioUbicacion] = useState(false)
+  const usarGps = !!ubic.coords && (pidioUbicacion || !origen)
+  const referencia = usarGps ? ubic.coords : origen
 
   const resultados = useMemo(() => {
     const filtrados = filtrarPorTexto(todos, texto)
@@ -23,8 +26,8 @@ export default function BuscadorEfector({ tipo, valor, onElegir, origen = null, 
 
   // Con ubicación nueva, sugerir el más cercano.
   useEffect(() => {
-    if (ubic.coords && autoElegirCercano && resultados[0] && !texto) onElegir(resultados[0])
-  }, [ubic.coords]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (pidioUbicacion && ubic.coords && autoElegirCercano && resultados[0] && !texto) onElegir(resultados[0])
+  }, [ubic.coords, pidioUbicacion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const elegido = valor ? todos.find((x) => x.id === valor) : null
   const noun = tipo === 'caps' ? 'CAPS' : 'hospital'
@@ -49,15 +52,15 @@ export default function BuscadorEfector({ tipo, valor, onElegir, origen = null, 
           placeholder={`Buscar ${noun} por nombre o partido`}
           aria-label={etiqueta ?? `Buscar ${noun}`}
         />
-        <button type="button" className="btn btn-ubicacion" onClick={ubic.pedir} disabled={ubic.cargando} title="Usar mi ubicación">
+        <button type="button" className="btn btn-ubicacion" onClick={() => { setPidioUbicacion(true); ubic.pedir() }} disabled={ubic.cargando} title="Usar mi ubicación">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.94 3A9 9 0 0 0 13 3.06V1h-2v2.06A9 9 0 0 0 3.06 11H1v2h2.06A9 9 0 0 0 11 20.94V23h2v-2.06A9 9 0 0 0 20.94 13H23v-2h-2.06ZM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" /></svg>
           <span>{ubic.cargando ? 'Ubicando…' : 'Cerca mío'}</span>
         </button>
       </div>
 
       {ubic.error && <p className="campo-error">{ubic.error}</p>}
-      {ubic.coords && <p className="nota">Ordenados por distancia a tu ubicación.</p>}
-      {!ubic.coords && origen && !texto && <p className="nota">Ordenados por distancia al CAPS que deriva.</p>}
+      {usarGps && <p className="nota">Ordenados por distancia a tu ubicación.</p>}
+      {!usarGps && origen && !texto && <p className="nota">Ordenados por distancia al CAPS que deriva.</p>}
 
       {resultados.length > 0 && (
         <ul className="buscador-lista" role="listbox" aria-label={`${noun} sugeridos`}>
