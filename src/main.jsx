@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { AppProvider } from './AppContext.jsx'
 import { inicializarDB } from './lib/db.js'
+import '@fontsource-variable/encode-sans'
 import './styles.css'
 
 const root = createRoot(document.getElementById('root'))

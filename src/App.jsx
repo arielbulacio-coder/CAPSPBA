@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useApp } from './AppContext.jsx'
 import Layout from './components/Layout.jsx'
 import Inicio from './pages/Inicio.jsx'
+import Cercanos from './pages/Cercanos.jsx'
 import CapsDerivados from './pages/caps/CapsDerivados.jsx'
 import NuevaDerivacion from './pages/caps/NuevaDerivacion.jsx'
 import DerivacionDetalle from './pages/caps/DerivacionDetalle.jsx'
@@ -23,6 +24,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={perfil ? <Navigate to={`/${perfil.rol}`} replace /> : <Inicio />} />
+      <Route path="/cerca" element={<Cercanos />} />
       <Route element={<Layout />}>
         <Route path="/caps" element={<Requiere rol="caps"><CapsDerivados /></Requiere>} />
         <Route path="/caps/nueva" element={<Requiere rol="caps"><NuevaDerivacion /></Requiere>} />

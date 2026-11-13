@@ -1,12 +1,20 @@
+/* Paleta institucional de la Provincia de Buenos Aires (Ministerio de Salud, gba.gob.ar). */
 :root {
-  --primario: #0f5c6e;
-  --primario-osc: #0a4452;
-  --acento: #7fd6c2;
-  --fondo: #f6f8f9;
+  --pba-cian: #009aae;
+  --pba-cian-osc: #007a8a;
+  --pba-cian-claro: #00aec3;
+  --pba-fucsia: #e72276;
+  --pba-gris: #414042;
+  --pba-gris-medio: #706f6f;
+  --barra: var(--pba-cian-osc);
+  --primario: var(--pba-cian-osc);
+  --primario-osc: #00626f;
+  --acento: var(--pba-fucsia);
+  --fondo: #f0f0f0;
   --superficie: #ffffff;
-  --borde: #dde3e6;
-  --texto: #1b2a30;
-  --texto-suave: #5a6b72;
+  --borde: #dcdcdc;
+  --texto: var(--pba-gris);
+  --texto-suave: var(--pba-gris-medio);
   --ok: #1e7a4c;
   --ok-fondo: #e3f4ea;
   --info: #1f5fa8;
@@ -19,7 +27,7 @@
   --radio: 12px;
   --sombra: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
   color-scheme: light;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Encode Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.45;
   color: var(--texto);
@@ -28,13 +36,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --primario: #4fb3c8;
-    --primario-osc: #3a97ab;
-    --fondo: #11181b;
-    --superficie: #1a2428;
-    --borde: #2c3a40;
-    --texto: #e3eaec;
-    --texto-suave: #9aaab0;
+    --barra: #005f6b;
+    --primario: #3cc4d6;
+    --primario-osc: #5fd0df;
+    --acento: #ff5a9a;
+    --fondo: #161617;
+    --superficie: #222224;
+    --borde: #39393c;
+    --texto: #ececec;
+    --texto-suave: #a8a8aa;
     --ok: #6fd39c;
     --ok-fondo: #173326;
     --info: #8ab8f0;
@@ -57,8 +67,10 @@ a { color: var(--primario); }
 /* ---------- Estructura ---------- */
 .app { min-height: 100dvh; display: flex; flex-direction: column; }
 .topbar {
-  background: #0f5c6e; color: #fff;
+  background: var(--barra); color: #fff;
   padding: calc(env(safe-area-inset-top) + 10px) 16px 0;
+  border-bottom: 4px solid transparent;
+  border-image: linear-gradient(to right, var(--pba-fucsia), var(--pba-cian-claro)) 1;
   position: sticky; top: 0; z-index: 10;
 }
 .topbar-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 960px; margin: 0 auto; }
@@ -68,7 +80,7 @@ a { color: var(--primario); }
 .topbar-salir { color: #fff !important; font-size: .85rem; white-space: nowrap; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; max-width: 960px; margin: 8px auto 0; scrollbar-width: none; }
 .tab {
-  color: #d7ecef; text-decoration: none; padding: 10px 12px; white-space: nowrap;
+  color: #d9f1f4; text-decoration: none; padding: 10px 12px; white-space: nowrap;
   border-bottom: 3px solid transparent; font-weight: 500; font-size: .95rem;
 }
 .tab.activa { color: #fff; border-bottom-color: var(--acento); }
@@ -100,6 +112,7 @@ a { color: var(--primario); }
 .btn:hover { border-color: var(--primario); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn-primario { background: var(--primario); border-color: var(--primario); color: #fff; }
+@media (prefers-color-scheme: dark) { .btn-primario, .chip.activo { color: #10292d; } }
 .btn-primario:hover { background: var(--primario-osc); }
 .btn-ok { background: var(--ok); border-color: var(--ok); color: #fff; }
 .btn-peligro { color: var(--error); border-color: var(--error); }
@@ -212,7 +225,7 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
 .tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .tabla th, .tabla td { padding: 8px 10px; border-bottom: 1px solid var(--borde); text-align: left; white-space: nowrap; }
 .tabla th { color: var(--texto-suave); font-weight: 600; }
-.tabla td:not(:first-child), .tabla th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla td:nth-child(n+3), .tabla th:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
 
 .grilla-cupos { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 .cifra { font-size: 1.6rem; font-weight: 700; margin: 0; }
@@ -224,7 +237,8 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
 /* ---------- Inicio ---------- */
 .inicio { max-width: 960px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 32px) 16px 32px; display: flex; flex-direction: column; gap: 24px; }
 .inicio-header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.inicio-header h1 { font-size: 1.8rem; }
+.inicio-header h1 { font-size: 1.8rem; color: var(--primario); }
+.inicio-header::after { content: ""; width: 120px; height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--pba-fucsia), var(--pba-cian-claro)); }
 .inicio-header p { margin: 0; color: var(--texto-suave); }
 .perfiles { display: grid; gap: 14px; grid-template-columns: 1fr; }
 @media (min-width: 760px) { .perfiles { grid-template-columns: repeat(3, 1fr); } }
@@ -236,7 +250,7 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
 /* ---------- Avisos ---------- */
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 90px);
-  background: #1b2a30; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 30;
+  background: var(--pba-gris); color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 30;
   max-width: calc(100vw - 32px); box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
 }
 .pwa-aviso {
@@ -260,3 +274,34 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
   .comprobante-nombre { font-weight: 700; }
   .comprobante-fecha { font-size: 22pt; font-weight: 700; }
 }
+
+/* ---------- Buscador de establecimientos y cercanía ---------- */
+.buscador { display: flex; flex-direction: column; gap: 10px; }
+.buscador-barra { display: flex; gap: 8px; }
+.buscador-barra input { flex: 1; min-width: 0; }
+.btn-ubicacion { gap: 6px; white-space: nowrap; color: var(--primario); border-color: var(--primario); }
+.buscador-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
+.buscador-item {
+  width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--borde); border-radius: 10px; background: var(--superficie);
+}
+.buscador-item:hover { border-color: var(--primario); }
+.buscador-item.activo { border-color: var(--primario); box-shadow: inset 4px 0 0 var(--primario); }
+.buscador-nombre { font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.buscador-item .nota { grid-column: 1; }
+.buscador-dist { grid-column: 2; grid-row: 1 / span 2; font-weight: 700; color: var(--primario); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.buscador-elegido { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--ok-fondo); }
+.buscador-elegido > div { display: flex; flex-direction: column; }
+
+.perfil-destacado { text-decoration: none; color: inherit; border-top: 4px solid var(--acento); }
+.perfil-destacado:hover { border-color: var(--primario); border-top-color: var(--acento); }
+.perfil-destacado .btn { align-self: flex-start; }
+.perfil-activo { border-color: var(--primario); box-shadow: inset 0 0 0 1px var(--primario); }
+.seccion { margin: 8px 0 -8px; font-size: 1rem; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .04em; }
+.centrado { text-align: center; }
+.item-destacado { border-color: var(--primario); box-shadow: inset 4px 0 0 var(--acento); }
+.item-destacado .item-principal .badge { align-self: flex-start; margin-bottom: 4px; }
+.item-dist { font-weight: 700; color: var(--primario); font-variant-numeric: tabular-nums; }
+.marca > div { min-width: 0; }
+.topbar-salir { flex: none; }

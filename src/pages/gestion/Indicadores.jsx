@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../lib/db.js'
 import { aISO, difDias, hoyISO, sumarDias } from '../../lib/fechas.js'
@@ -24,12 +25,21 @@ function Indicador({ titulo, valor, unidad, base, meta, mejorSi = 'menor', n }) 
 }
 
 export default function Indicadores() {
+  const [partido, setPartido] = useState('')
   const datos = useLiveQuery(async () => {
-    const [ders, pacientes, efectores] = await Promise.all([db.derivaciones.toArray(), db.pacientes.toArray(), db.efectores.toArray()])
-    return { ders, pacientes, efectores }
+    const [todas, todosPac, efectores, partidos] = await Promise.all([
+      db.derivaciones.toArray(), db.pacientes.toArray(), db.efectores.toArray(), db.efectores.orderBy('partido').uniqueKeys(),
+    ])
+    return { todas, todosPac, efectores, partidos }
   }, [])
   if (!datos) return <Cargando />
-  const { ders, pacientes, efectores } = datos
+  const { todas, todosPac, efectores, partidos } = datos
+  const efPorId = Object.fromEntries(efectores.map((e) => [e.id, e]))
+  const enPartido = (capsId) => !partido || efPorId[capsId]?.partido === partido
+  const ders = todas.filter((d) => enPartido(d.capsId))
+  const pacientes = todosPac.filter((p) => enPartido(p.capsId))
+  const hospitalesRed = new Set(todas.map((d) => d.hospitalId)).size
+  const capsRed = new Set(todas.map((d) => d.capsId)).size
 
   const conTurno = ders.filter((d) => d.asignadaEn)
   const demoraAsignacion = prom(conTurno.map((d) => (d.asignadaEn - d.creadaEn) / 86_400_000))
@@ -51,12 +61,22 @@ export default function Indicadores() {
   const pendSync = ders.filter((d) => d.sincronizada === 0).length
   const sinCupo = ders.filter((d) => d.estado === 'sin_cupo').length
 
-  const caps = efectores.filter((e) => e.tipo === 'caps')
+  const caps = efectores.filter((e) => e.tipo === 'caps' && enPartido(e.id) && (ders.some((d) => d.capsId === e.id) || pacientes.some((p) => p.capsId === e.id)))
 
   return (
     <>
-      <div className="encabezado"><h1>Indicadores del piloto</h1></div>
-      <p className="nota">Calculados sobre los datos de este equipo. Línea de base: Anexo 2026. Verde = mejor que la línea de base.</p>
+      <div className="encabezado">
+        <h1>Indicadores {partido ? `· ${partido}` : 'provinciales'}</h1>
+        <select value={partido} onChange={(e) => setPartido(e.target.value)} aria-label="Filtrar por partido">
+          <option value="">Toda la provincia</option>
+          {partidos.map((p) => <option key={p}>{p}</option>)}
+        </select>
+      </div>
+      <p className="nota">
+        Red: {efectores.filter((e) => e.tipo === 'hospital').length} hospitales y {efectores.filter((e) => e.tipo === 'caps').length} CAPS en {partidos.length} partidos.
+        Con derivaciones registradas: {capsRed} CAPS → {hospitalesRed} hospital{hospitalesRed === 1 ? '' : 'es'}.
+        Línea de base: Anexo 2026. Verde = mejor que la línea de base.
+      </p>
 
       <Tarjeta titulo="Meta 1 · Espera para especialista (34 → 20 días)">
         <div className="indicadores">
@@ -91,7 +111,7 @@ export default function Indicadores() {
         <div className="tabla-scroll">
           <table className="tabla">
             <thead>
-              <tr><th>CAPS</th><th>Derivaciones</th><th>Con contrarref.</th><th>Ausentes</th><th>DBT con control</th></tr>
+              <tr><th>CAPS</th><th>Partido</th><th>Derivaciones</th><th>Con contrarref.</th><th>Ausentes</th><th>DBT con control</th></tr>
             </thead>
             <tbody>
               {caps.map((c) => {
@@ -99,7 +119,8 @@ export default function Indicadores() {
                 const pd = dbt.filter((p) => p.capsId === c.id)
                 return (
                   <tr key={c.id}>
-                    <td>{c.nombre}{c.sinConexion ? ' ⚠︎' : ''}</td>
+                    <td>{c.nombre}</td>
+                    <td>{c.partido}</td>
                     <td>{dc.length}</td>
                     <td>{dc.filter((d) => d.estado === 'contrarreferido').length}</td>
                     <td>{dc.filter((d) => d.estado === 'ausente').length}</td>
@@ -110,7 +131,7 @@ export default function Indicadores() {
             </tbody>
           </table>
         </div>
-        <p className="nota">⚠︎ CAPS sin conexión estable: trabajan sin conexión y sincronizan al recuperar señal.</p>
+        {caps.length === 0 && <p className="nota">Sin derivaciones registradas en este partido.</p>}
       </Tarjeta>
     </>
   )

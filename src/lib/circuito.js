@@ -1,5 +1,18 @@
 import { db, nuevoId } from './db.js'
 import { hoyISO, sumarDias } from './fechas.js'
+import { generarCupos } from './seed.js'
+
+/**
+ * Cada hospital de la red tiene su agenda de cupo protegido para CAPS. En el prototipo
+ * se crea la grilla estándar la primera vez que se lo usa y se extiende a 45 días.
+ */
+export async function asegurarCupos(hospitalId) {
+  const ultimo = await db.cupos.where('hospitalId').equals(hospitalId).reverse().sortBy('fecha')
+  const hasta = sumarDias(hoyISO(), 45)
+  const desdeDia = ultimo.length ? Math.max(1, Math.round((new Date(ultimo[0].fecha) - new Date(hoyISO())) / 86_400_000) + 1) : 1
+  if (ultimo.length && ultimo[0].fecha >= hasta) return
+  await db.cupos.bulkPut(generarCupos(hospitalId, desdeDia, 45).filter((c) => !ultimo.some((u) => u.id === c.id)))
+}
 
 // Circuito cerrado CAPS → hospital → CAPS.
 // En este prototipo el "servidor" es la misma base local: sincronizar = asignar
@@ -18,6 +31,8 @@ async function primerCupoLibre(hospitalId, especialidad, despuesDe = null) {
 
 /** Asigna turno a una derivación. Devuelve la derivación actualizada. */
 export async function asignarTurno(derivacionId, { despuesDe = null } = {}) {
+  const previa = await db.derivaciones.get(derivacionId)
+  if (previa?.hospitalId) await asegurarCupos(previa.hospitalId)
   return db.transaction('rw', db.cupos, db.derivaciones, async () => {
     const d = await db.derivaciones.get(derivacionId)
     if (!d || d.turnoId) return d

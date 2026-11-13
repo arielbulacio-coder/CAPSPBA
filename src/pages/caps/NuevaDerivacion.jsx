@@ -7,6 +7,9 @@ import { sugerirEspecialidad, datosFaltantes } from '../../lib/sugerencia.js'
 import { crearDerivacion } from '../../lib/circuito.js'
 import { edad } from '../../lib/fechas.js'
 import { Campo, Tarjeta } from '../../components/Comunes.jsx'
+import BuscadorEfector from '../../components/BuscadorEfector.jsx'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { masCercanos } from '../../lib/geo.js'
 
 const PACIENTE_VACIO = { nombre: '', apellido: '', fechaNac: '', telefono: '', canal: 'papel', cronico: [] }
 
@@ -21,6 +24,15 @@ export default function NuevaDerivacion() {
   const [form, setForm] = useState({ motivo: '', antecedentes: '', estudios: '', especialidad: '', prioridad: 'programada' })
   const [errores, setErrores] = useState({})
   const [guardando, setGuardando] = useState(false)
+  const [hospitalElegido, setHospitalElegido] = useState(null)
+
+  // Hospital de destino: por defecto, el hospital público más cercano al CAPS.
+  const capsActual = useLiveQuery(() => db.efectores.get(perfil.efectorId), [perfil.efectorId])
+  const hospitalCercano = useLiveQuery(async () => {
+    if (!capsActual) return null
+    return masCercanos(await db.efectores.where('tipo').equals('hospital').toArray(), capsActual, 1)[0] ?? null
+  }, [capsActual])
+  const hospitalId = hospitalElegido?.id ?? hospitalCercano?.id
 
   const dni = validarDNI(dniTexto)
 
@@ -74,6 +86,7 @@ export default function NuevaDerivacion() {
     }
     if (form.motivo.trim().length < 5) errs.motivo = 'Describí el motivo de la derivación.'
     if (!form.especialidad) errs.especialidad = 'Elegí la especialidad.'
+    if (!hospitalId) errs.hospital = 'Elegí el hospital de destino.'
     setErrores(errs)
     if (Object.keys(errs).length) return
 
@@ -84,9 +97,8 @@ export default function NuevaDerivacion() {
         pacienteId = nuevoId()
         await db.pacientes.add({ id: pacienteId, dni: dni.dni, ...nuevo, nombre: nuevo.nombre.trim(), apellido: nuevo.apellido.trim(), capsId: perfil.efectorId, ultimoControl: null })
       }
-      const hospital = await db.efectores.where('tipo').equals('hospital').first()
       const id = await crearDerivacion(
-        { pacienteId, capsId: perfil.efectorId, hospitalId: hospital.id, especialidad: form.especialidad, motivo: form.motivo.trim(), antecedentes: form.antecedentes.trim(), estudios: form.estudios.trim(), prioridad: form.prioridad, canal },
+        { pacienteId, capsId: perfil.efectorId, hospitalId, especialidad: form.especialidad, motivo: form.motivo.trim(), antecedentes: form.antecedentes.trim(), estudios: form.estudios.trim(), prioridad: form.prioridad, canal },
         enLinea,
       )
       notificar(enLinea ? 'Derivación enviada.' : 'Derivación guardada en el equipo. Se enviará al volver la señal.')
@@ -191,6 +203,12 @@ export default function NuevaDerivacion() {
             </select>
           </Campo>
         </div>
+      </Tarjeta>
+
+      <Tarjeta titulo="4. Hospital de destino">
+        <p className="nota">Sugerimos el hospital público más cercano al CAPS. Podés elegir otro de la red provincial.</p>
+        <BuscadorEfector tipo="hospital" valor={hospitalId} onElegir={setHospitalElegido} origen={capsActual} autoElegirCercano={false} max={5} />
+        {errores.hospital && <p className="campo-error">{errores.hospital}</p>}
       </Tarjeta>
 
       {faltantes.length > 0 && (

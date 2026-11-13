@@ -1,14 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useApp } from '../../AppContext.jsx'
 import { db, ESPECIALIDADES } from '../../lib/db.js'
 import { fechaCorta, hoyISO, sumarDias } from '../../lib/fechas.js'
 import { Campo, Tarjeta, Cargando } from '../../components/Comunes.jsx'
+import { asegurarCupos } from '../../lib/circuito.js'
 
 // Cupo protegido para derivaciones de CAPS: primer paso, decisión de gestión con costo tecnológico cero.
 export default function Cupos() {
   const { perfil, notificar, sincronizarAhora, enLinea } = useApp()
   const [nuevo, setNuevo] = useState({ especialidad: 'Cardiología', fecha: sumarDias(hoyISO(), 1), hora: '13:00' })
+
+  useEffect(() => {
+    asegurarCupos(perfil.efectorId)
+  }, [perfil.efectorId])
 
   const resumen = useLiveQuery(async () => {
     const hoy = hoyISO()

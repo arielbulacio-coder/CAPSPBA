@@ -1,14 +1,17 @@
 import { diasHabiles, hoyISO, sumarDias, desdeISO } from './fechas.js'
+import { masCercanos } from './geo.js'
 
-// Datos ficticios para el piloto: un hospital con HIS y sus CAPS (Entregable 1, sección 6).
-const HOSPITAL = { id: 'H1', tipo: 'hospital', nombre: 'Hospital Regional Zona Norte', conHIS: true }
-
-const CAPS = [
-  { id: 'C1', tipo: 'caps', nombre: 'CAPS Villa Esperanza', rural: true, sinConexion: true },
-  { id: 'C2', tipo: 'caps', nombre: 'CAPS Los Aromos', rural: true, sinConexion: false },
-  { id: 'C3', tipo: 'caps', nombre: 'CAPS Barrio San Martín', rural: false, sinConexion: false },
-  { id: 'C4', tipo: 'caps', nombre: 'CAPS Paraje El Ceibo', rural: true, sinConexion: true },
-]
+// Pacientes y derivaciones FICTICIOS para demostrar el circuito. Los establecimientos
+// son reales (padrón provincial); el piloto se arma con un hospital y sus 4 CAPS más cercanos.
+async function elegirPiloto(db) {
+  const hospitales = await db.efectores.where('tipo').equals('hospital').toArray()
+  const hospital =
+    hospitales.find((h) => h.partido === 'La Plata' && /general san mart[ií]n/i.test(h.nombre)) ??
+    hospitales.find((h) => /interzonal general de agudos/i.test(h.nombre)) ??
+    hospitales[0]
+  const caps = masCercanos(await db.efectores.where('tipo').equals('caps').toArray(), hospital, 4)
+  return { hospital, caps }
+}
 
 // cronico: DBT = diabetes, HTA = hipertensión. ultimoControl en días hacia atrás (null = nunca).
 const PACIENTES = [
@@ -49,6 +52,9 @@ export function generarCupos(hospitalId, desde, hasta) {
 }
 
 export async function cargarDatosDemo(db) {
+  const { hospital: HOSPITAL, caps } = await elegirPiloto(db)
+  if (!HOSPITAL || caps.length < 4) return
+  const capsDe = { C1: caps[0].id, C2: caps[1].id, C3: caps[2].id, C4: caps[3].id }
   const hoy = hoyISO()
   const ts = (diasAtras, hora = 10) => {
     const d = desdeISO(sumarDias(hoy, -diasAtras))
@@ -57,7 +63,7 @@ export async function cargarDatosDemo(db) {
   }
 
   const pacientes = PACIENTES.map(([nombre, apellido, dni, fechaNac, capsId, cronico, canal, telefono, ultimo], i) => ({
-    id: `P${i + 1}`, nombre, apellido, dni, fechaNac, capsId, cronico, canal, telefono,
+    id: `P${i + 1}`, nombre, apellido, dni, fechaNac, capsId: capsDe[capsId], cronico, canal, telefono,
     ultimoControl: ultimo == null ? null : sumarDias(hoy, -ultimo),
   }))
 
@@ -103,8 +109,7 @@ export async function cargarDatosDemo(db) {
     derivaciones.push(d)
   }
 
-  await db.transaction('rw', db.tables, async () => {
-    await db.efectores.bulkAdd([HOSPITAL, ...CAPS])
+  await db.transaction('rw', db.pacientes, db.cupos, db.derivaciones, db.controles, async () => {
     await db.pacientes.bulkAdd(pacientes)
     await db.cupos.bulkAdd(cupos)
     await db.derivaciones.bulkAdd(derivaciones)

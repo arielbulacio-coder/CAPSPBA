@@ -9,10 +9,12 @@ const NAV = {
     ['/caps', 'Derivados', true],
     ['/caps/nueva', 'Nueva derivación'],
     ['/caps/controles', 'Crónicos y controles'],
+    ['/cerca', 'CAPS cercanos'],
   ],
   hospital: [
     ['/hospital', 'Agenda', true],
     ['/hospital/cupos', 'Cupo protegido'],
+    ['/cerca', 'Establecimientos cercanos'],
   ],
   gestion: [['/gestion', 'Indicadores', true]],
 }
@@ -36,7 +38,7 @@ export default function Layout() {
             <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="28" height="28" />
             <div>
               <strong>Red CAPS</strong>
-              <span className="marca-sub">{efector?.nombre ?? (perfil?.rol === 'gestion' ? 'Subsecretaría de Gestión' : '')}</span>
+              <span className="marca-sub">{efector ? `${efector.nombre} · ${efector.partido}` : perfil?.rol === 'gestion' ? 'Gestión provincial' : ''}</span>
             </div>
           </div>
           <button className="btn-link topbar-salir" onClick={salir}>Cambiar perfil</button>

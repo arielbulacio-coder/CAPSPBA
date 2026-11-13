@@ -18,8 +18,8 @@ export default defineConfig({
         description:
           'Derivación digital CAPS → hospital → CAPS con cupo protegido, contrarreferencia y seguimiento de crónicos. Funciona sin conexión.',
         lang: 'es-AR',
-        theme_color: '#0f5c6e',
-        background_color: '#f6f8f9',
+        theme_color: '#007a8a',
+        background_color: '#f0f0f0',
         display: 'standalone',
         orientation: 'portrait',
         start_url: base,
@@ -32,7 +32,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,json,woff2}'],
         navigateFallback: 'index.html',
       },
     }),
