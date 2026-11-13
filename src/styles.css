@@ -352,3 +352,47 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible, .chip:focus-visib
 .item-solicitud { flex-wrap: wrap; }
 .fila-agendar { display: flex; gap: 8px; align-items: center; }
 .fila-agendar input { width: auto; }
+
+/* ---------- Historia clínica única ---------- */
+.hc-cabecera { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.hc-cabecera p { margin: 2px 0 0; }
+.hc-etiquetas { display: flex; gap: 6px; flex-wrap: wrap; }
+.hc-alergias { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; background: var(--gris-fondo); }
+.hc-alergias.con-alergias { background: var(--error-fondo); color: var(--error); border-left: 4px solid var(--error); }
+.hc-alergias .fila-agendar { width: 100%; }
+.hc-alergias .fila-agendar input { flex: 1; }
+.cie { display: flex; flex-direction: column; gap: 6px; }
+.cie-elegidos { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.cie-elegidos .chip { display: inline-flex; align-items: center; gap: 6px; cursor: default; }
+.cie-elegidos button { background: none; border: 0; color: inherit; font-size: 1.1rem; cursor: pointer; padding: 0 2px; line-height: 1; }
+.cie-opciones { list-style: none; margin: 0; padding: 0; border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; background: var(--superficie); }
+.cie-opciones button { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--borde); padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; }
+.cie-opciones li:last-child button { border-bottom: 0; }
+.cie-opciones button:hover { background: var(--info-fondo); }
+.cie-libre { color: var(--texto-suave) !important; font-style: italic; }
+.cie-codigo { font-family: ui-monospace, monospace; font-size: .85em; font-weight: 700; color: var(--primario); }
+.chip.activo .cie-codigo { color: inherit; }
+.fuera-rango { color: var(--error); font-weight: 700; }
+.signos { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.signos legend { font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
+.signos label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--texto-suave); }
+.linea-tiempo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lt-item { display: grid; grid-template-columns: 74px 1fr; gap: 12px; position: relative; padding-bottom: 14px; }
+.lt-item::before { content: ""; position: absolute; left: 86px; top: 10px; bottom: -4px; width: 2px; background: var(--borde); }
+.lt-item:last-child::before { display: none; }
+.lt-fecha { font-size: .82rem; color: var(--texto-suave); text-align: right; padding-top: 12px; font-variant-numeric: tabular-nums; }
+.lt-cuerpo { background: var(--superficie); border: 1px solid var(--borde); border-left: 4px solid var(--primario); border-radius: 10px; padding: 10px 12px; margin-left: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lt-cuerpo p { margin: 0; }
+.lt-titulo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.lt-rotulo { color: var(--texto-suave); font-size: .88rem; }
+.lt-teleconsulta .lt-cuerpo { border-left-color: var(--pba-cian-claro); }
+.lt-especialista .lt-cuerpo { border-left-color: var(--acento); }
+.lt-derivacion .lt-cuerpo { border-left-color: var(--info); }
+.lt-futuro .lt-cuerpo { border-style: dashed; border-left-style: solid; opacity: .9; }
+.lista-simple { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 420px) {
+  .lt-item { grid-template-columns: 1fr; gap: 4px; }
+  .lt-item::before { display: none; }
+  .lt-fecha { text-align: left; padding-top: 0; }
+  .lt-cuerpo { margin-left: 0; }
+}

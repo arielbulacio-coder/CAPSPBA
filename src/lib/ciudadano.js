@@ -14,7 +14,8 @@ export async function ingresarPaciente(dniTexto, fechaNac) {
   const dni = validarDNI(dniTexto)
   if (!dni.ok) return { error: dni.error }
   if (!fechaNac) return { error: 'Ingresá tu fecha de nacimiento.' }
-  const p = await db.pacientes.where('dni').equals(dni.dni).first()
+  let p = await db.pacientes.where('dni').equals(dni.dni).first()
+  if (p?.fusionadoCon && p.fechaNac === fechaNac) p = await db.pacientes.get(p.fusionadoCon)
   if (!p || p.fechaNac !== fechaNac) {
     return { error: 'No encontramos a una persona con ese DNI y fecha de nacimiento. Si te atendés en un CAPS, pedí que te registren.' }
   }

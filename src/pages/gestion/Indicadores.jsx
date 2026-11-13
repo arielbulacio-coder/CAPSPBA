@@ -30,10 +30,13 @@ export default function Indicadores() {
     const [todas, todosPac, efectores, partidos] = await Promise.all([
       db.derivaciones.toArray(), db.pacientes.toArray(), db.efectores.toArray(), db.efectores.orderBy('partido').uniqueKeys(),
     ])
-    return { todas, todosPac, efectores, partidos }
+    const encuentros = await db.encuentros.toArray()
+    return { todas, todosPac, efectores, partidos, encuentros }
   }, [])
   if (!datos) return <Cargando />
-  const { todas, todosPac, efectores, partidos } = datos
+  const { todas, todosPac: conDuplicados, efectores, partidos, encuentros } = datos
+  const todosPac = conDuplicados.filter((p) => !p.fusionadoCon)
+  const unificados = conDuplicados.length - todosPac.length
   const efPorId = Object.fromEntries(efectores.map((e) => [e.id, e]))
   const enPartido = (capsId) => !partido || efPorId[capsId]?.partido === partido
   const ders = todas.filter((d) => enPartido(d.capsId))
@@ -97,6 +100,16 @@ export default function Indicadores() {
 
       <Tarjeta titulo="Meta 3 · −15% internaciones por descompensación">
         <p className="nota">Se mide con egresos hospitalarios (HIS), fuera de esta app. Esta app aporta los controles agendados por contrarreferencia que deberían evitar descompensaciones.</p>
+      </Tarjeta>
+
+      <Tarjeta titulo="Historia clínica única">
+        <div className="indicadores">
+          <Indicador titulo="Evoluciones registradas" valor={encuentros.filter((e) => enPartido(todosPac.find((p) => p.id === e.pacienteId)?.capsId)).length} unidad="" />
+          <Indicador titulo="Teleconsultas registradas en la historia" valor={encuentros.filter((e) => e.tipo === 'teleconsulta').length} unidad="" />
+          <Indicador titulo="Codificadas con CIE-10" valor={pct(encuentros.filter((e) => e.diagnosticos?.some((d) => d.codigo)).length, encuentros.filter((e) => e.diagnosticos?.length).length)} unidad="%" mejorSi="mayor" />
+          <Indicador titulo="Registros duplicados unificados" valor={unificados} unidad="" />
+        </div>
+        <p className="nota">Línea de base: 0% de las 4.100 teleconsultas anuales registradas; 12% de registros duplicados.</p>
       </Tarjeta>
 
       <Tarjeta titulo="Operación">

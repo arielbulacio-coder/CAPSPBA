@@ -125,3 +125,90 @@ const MOTIVOS = {
   'Nefrología': 'Creatinina elevada en paciente diabético hipertenso.',
   'Oftalmología': 'Fondo de ojo anual por diabetes.',
 }
+
+// ---------- Historia Clínica Única: datos de ejemplo (ficticios) ----------
+
+const DX_POR_ESPECIALIDAD = {
+  'Cardiología': { codigo: 'I11', texto: 'Enfermedad cardíaca hipertensiva' },
+  'Endocrinología': { codigo: 'E11', texto: 'Diabetes mellitus tipo 2' },
+  'Nefrología': { codigo: 'N18', texto: 'Enfermedad renal crónica' },
+  'Oftalmología': { codigo: 'H36.0', texto: 'Retinopatía diabética' },
+}
+
+export async function cargarHCUDemo(db) {
+  const hoy = hoyISO()
+  const pacientes = (await db.pacientes.toArray()).filter((p) => !p.fusionadoCon)
+  if (!pacientes.length) return
+  const derivaciones = await db.derivaciones.toArray()
+  const encuentros = []
+  const problemas = []
+  const medicacion = []
+  let n = 0
+  const id = (pre) => `${pre}-demo-${++n}`
+
+  for (const [i, p] of pacientes.entries()) {
+    const anios = 3 + (i % 6)
+    if (p.cronico?.includes('DBT')) {
+      problemas.push({ id: id('PR'), pacienteId: p.id, codigo: 'E11', texto: 'Diabetes mellitus tipo 2', desde: sumarDias(hoy, -365 * anios), estado: 'activo' })
+      medicacion.push({ id: id('MD'), pacienteId: p.id, droga: 'Metformina', dosis: '850 mg cada 12 h', prescriptor: 'CAPS', desde: sumarDias(hoy, -365 * anios), activa: true })
+    }
+    if (p.cronico?.includes('HTA')) {
+      problemas.push({ id: id('PR'), pacienteId: p.id, codigo: 'I10', texto: 'Hipertensión esencial (primaria)', desde: sumarDias(hoy, -365 * (anios + 2)), estado: 'activo' })
+      medicacion.push({ id: id('MD'), pacienteId: p.id, droga: 'Enalapril', dosis: '10 mg cada 12 h', prescriptor: 'CAPS', desde: sumarDias(hoy, -365 * (anios + 1)), activa: true })
+    }
+    if (p.ultimoControl) {
+      const viejo = p.ultimoControl < sumarDias(hoy, -365)
+      encuentros.push({
+        id: id('EN'), pacienteId: p.id, efectorId: p.capsId, fecha: p.ultimoControl, creadoEn: desdeISO(p.ultimoControl).getTime(),
+        tipo: p.cronico?.length ? 'control' : 'consulta', profesional: 'Dra. Laura Benítez (médica generalista)', fuente: viejo ? 'papel' : 'red',
+        motivo: p.cronico?.length ? `Control de ${p.cronico.map((c) => (c === 'DBT' ? 'diabetes' : 'hipertensión')).join(' e ')}` : 'Consulta general',
+        diagnosticos: [], evolucion: 'Paciente estable. Refiere buena adherencia al tratamiento.', indicaciones: 'Continuar tratamiento. Dieta y actividad física.',
+        signos: { taSis: p.cronico?.includes('HTA') ? 140 + (i % 3) * 5 : 120, taDia: p.cronico?.includes('HTA') ? 90 : 80, peso: 68 + i, glucemia: p.cronico?.includes('DBT') ? 140 + (i % 4) * 15 : null, hba1c: null },
+      })
+    }
+  }
+
+  // Lo que hizo el especialista también es parte de la historia (antes quedaba sólo en el HIS).
+  for (const d of derivaciones.filter((x) => x.contrarreferencia)) {
+    const dx = DX_POR_ESPECIALIDAD[d.especialidad]
+    encuentros.push({
+      id: id('EN'), pacienteId: d.pacienteId, efectorId: d.hospitalId, fecha: d.turnoFecha, creadoEn: d.contrarreferencia.fecha,
+      tipo: 'especialista', profesional: `${d.contrarreferencia.profesional} (${d.especialidad.toLowerCase()})`, fuente: 'his', derivacionId: d.id,
+      motivo: d.motivo, diagnosticos: [{ ...dx, texto: d.contrarreferencia.diagnostico }], evolucion: d.contrarreferencia.diagnostico, indicaciones: d.contrarreferencia.indicacion, signos: null,
+    })
+  }
+
+  // Una teleconsulta (hoy 0% de las 4.100 anuales queda registrada en la historia).
+  const tele = pacientes.find((p) => p.id === 'P2') ?? pacientes[1]
+  const hospital = derivaciones[0]?.hospitalId
+  if (tele && hospital) {
+    encuentros.push({
+      id: id('EN'), pacienteId: tele.id, efectorId: hospital, fecha: sumarDias(hoy, -12), creadoEn: Date.now() - 12 * 86_400_000,
+      tipo: 'teleconsulta', profesional: 'Dr. Martín Acosta (cardiología)', fuente: 'red', motivo: 'Seguimiento de TA después del ajuste de enalapril',
+      diagnosticos: [{ codigo: 'I10', texto: 'Hipertensión esencial (primaria)' }], evolucion: 'Refiere registros domiciliarios de TA entre 130/80 y 135/85. Sin síntomas.', indicaciones: 'Mantener dosis. Control presencial en CAPS en 60 días.',
+      signos: { taSis: 132, taDia: 82, peso: null, glucemia: null, hba1c: null },
+    })
+  }
+
+  // Rosa Medina: alergia y un registro duplicado (DNI mal transcripto en papel), para unificar.
+  const rosa = pacientes.find((p) => p.id === 'P1')
+  if (rosa) {
+    await db.pacientes.update(rosa.id, { alergias: ['Penicilina'] })
+    if (!(await db.pacientes.get('P15'))) {
+      await db.pacientes.add({ id: 'P15', nombre: 'Rosa', apellido: 'Medina', dni: '11234568', fechaNac: rosa.fechaNac, capsId: rosa.capsId, cronico: ['DBT'], canal: 'papel', telefono: '2364557788', ultimoControl: sumarDias(hoy, -700), alergias: ['AINES'] })
+      encuentros.push({
+        id: id('EN'), pacienteId: 'P15', efectorId: rosa.capsId, fecha: sumarDias(hoy, -700), creadoEn: Date.now() - 700 * 86_400_000,
+        tipo: 'control', profesional: 'Dr. Raúl Gómez (médico generalista)', fuente: 'papel', motivo: 'Control de diabetes',
+        diagnosticos: [], evolucion: 'Ficha en papel digitalizada. Refiere intolerancia a AINES (epigastralgia).', indicaciones: 'Metformina 850 mg con almuerzo y cena. Pedir HbA1c.',
+        signos: { taSis: 150, taDia: 95, peso: 74, glucemia: 182, hba1c: 8.1 },
+      })
+    }
+  }
+
+  await db.transaction('rw', db.encuentros, db.problemas, db.medicacion, db.meta, async () => {
+    await db.encuentros.bulkPut(encuentros)
+    await db.problemas.bulkPut(problemas)
+    await db.medicacion.bulkPut(medicacion)
+    await db.meta.put({ clave: 'hcu', version: 1 })
+  })
+}

@@ -127,13 +127,23 @@ export async function marcarAtendido(derivacionId) {
 /**
  * Contrarreferencia de 3 campos. Cierra el circuito: agenda el próximo control en el CAPS.
  */
-export async function registrarContrarreferencia(derivacionId, { diagnostico, indicacion, proximoControl, profesional }) {
-  await db.transaction('rw', db.derivaciones, db.controles, async () => {
+export async function registrarContrarreferencia(derivacionId, { diagnostico, codigo = null, indicacion, proximoControl, profesional }) {
+  await db.transaction('rw', [db.derivaciones, db.controles, db.encuentros, db.problemas], async () => {
     const d = await db.derivaciones.get(derivacionId)
     await db.derivaciones.update(derivacionId, {
       estado: 'contrarreferido',
-      contrarreferencia: { diagnostico, indicacion, proximoControl, profesional, fecha: Date.now() },
+      contrarreferencia: { diagnostico, codigo, indicacion, proximoControl, profesional, fecha: Date.now() },
     })
+    // La consulta del especialista queda en la Historia Clínica Única.
+    await db.encuentros.add({
+      id: nuevoId(), pacienteId: d.pacienteId, efectorId: d.hospitalId, fecha: hoyISO(), creadoEn: Date.now(),
+      tipo: 'especialista', profesional: `${profesional} (${d.especialidad.toLowerCase()})`, fuente: 'red', derivacionId,
+      motivo: d.motivo, diagnosticos: [{ codigo, texto: diagnostico }], evolucion: diagnostico, indicaciones: indicacion, signos: null,
+    })
+    if (codigo && !/^[RZ]/.test(codigo)) {
+      const ya = await db.problemas.where('pacienteId').equals(d.pacienteId).filter((p) => p.estado === 'activo' && p.codigo === codigo).count()
+      if (!ya) await db.problemas.add({ id: nuevoId(), pacienteId: d.pacienteId, codigo, texto: diagnostico, desde: hoyISO(), estado: 'activo' })
+    }
     await db.controles.add({
       id: nuevoId(),
       pacienteId: d.pacienteId,

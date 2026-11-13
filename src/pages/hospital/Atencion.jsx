@@ -7,6 +7,7 @@ import { fechaLarga, fechaCorta, fechaHora, edad, habil, hoyISO, sumarDias } fro
 import { nombreCompleto } from '../../lib/pacientes.js'
 import { marcarAusente, marcarAtendido, registrarContrarreferencia } from '../../lib/circuito.js'
 import { Campo, EstadoBadge, Tarjeta, Cargando } from '../../components/Comunes.jsx'
+import BuscadorCIE from '../../components/BuscadorCIE.jsx'
 
 const PLAZOS = [30, 60, 90, 180]
 
@@ -56,6 +57,7 @@ export default function Atencion() {
         <div>
           <h1>{nombreCompleto(p)}</h1>
           <p className="nota">DNI {p.dni} · {edad(p.fechaNac)} años · {caps.nombre}</p>
+          <Link to={`/hospital/hcu/${p.id}`} className="btn-link">Ver historia clínica completa →</Link>
         </div>
         <EstadoBadge estado={d.estado} />
       </div>
@@ -100,7 +102,13 @@ export default function Atencion() {
         <form onSubmit={guardar} noValidate>
           <Tarjeta titulo="Contrarreferencia al CAPS">
             <Campo label="1. Diagnóstico" error={errores.diagnostico}>
-              <input value={cr.diagnostico} onChange={set('diagnostico')} placeholder="Ej.: HTA estadio 1, ECG normal" />
+              <BuscadorCIE
+                valor={cr.codigo ? [{ codigo: cr.codigo, texto: cr.diagnostico }] : []}
+                onCambiar={(l) => setCr((c) => ({ ...c, codigo: l[0]?.codigo ?? null, diagnostico: l[0]?.texto ?? c.diagnostico }))}
+                multiple={false}
+                placeholder="Codificar con CIE-10 (opcional)"
+              />
+              <input value={cr.diagnostico} onChange={set('diagnostico')} placeholder="Ej.: HTA estadio 1, ECG normal" aria-label="Diagnóstico" />
             </Campo>
             <Campo label="2. Indicación para el CAPS" error={errores.indicacion}>
               <textarea rows={2} value={cr.indicacion} onChange={set('indicacion')} placeholder="Medicación, controles, qué vigilar" />

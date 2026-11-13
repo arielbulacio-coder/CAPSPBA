@@ -20,7 +20,7 @@ const normalizar = (s) =>
 export async function buscarPosiblesDuplicados({ dni, apellido, fechaNac }) {
   const todos = await db.pacientes.toArray()
   return todos.filter((p) => {
-    if (p.dni === dni) return false
+    if (p.dni === dni || p.fusionadoCon) return false
     const mismaPersona = apellido && fechaNac && normalizar(p.apellido) === normalizar(apellido) && p.fechaNac === fechaNac
     const dniParecido = dni && p.dni.length === dni.length && [...p.dni].filter((c, i) => c !== dni[i]).length === 1
     return mismaPersona || dniParecido

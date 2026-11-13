@@ -50,7 +50,13 @@ const fmtFecha = new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: 'nume
 const fmtFechaLarga = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 const fmtHora = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-export const fechaCorta = (iso) => (iso ? fmtFecha.format(desdeISO(iso)) : '—')
+const fmtFechaAnio = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+/** Fecha corta; agrega el año cuando no es el actual. */
+export const fechaCorta = (iso) => {
+  if (!iso) return '—'
+  const d = desdeISO(iso)
+  return d.getFullYear() === new Date().getFullYear() ? fmtFecha.format(d) : fmtFechaAnio.format(d)
+}
 export const fechaLarga = (iso) => (iso ? fmtFechaLarga.format(desdeISO(iso)) : '—')
 export const fechaHora = (ts) => (ts ? fmtHora.format(new Date(ts)) : '—')
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useApp } from '../../AppContext.jsx'
 import { db } from '../../lib/db.js'
@@ -17,7 +18,7 @@ export default function Controles() {
     const [solicitudes, controles, pacientes] = await Promise.all([
       db.controles.where('capsId').equals(perfil.efectorId).filter((c) => c.estado === 'solicitado').sortBy('solicitadoEn'),
       db.controles.where('capsId').equals(perfil.efectorId).filter((c) => c.estado === 'agendado').sortBy('fecha'),
-      db.pacientes.where('capsId').equals(perfil.efectorId).toArray(),
+      db.pacientes.where('capsId').equals(perfil.efectorId).filter((p) => !p.fusionadoCon).toArray(),
     ])
     return { solicitudes, controles, pacientes, porId: Object.fromEntries(pacientes.map((p) => [p.id, p])) }
   }, [perfil.efectorId])
@@ -114,7 +115,7 @@ export default function Controles() {
             {visibles.map((p) => (
               <li key={p.id} className="item item-estatico">
                 <div className="item-principal">
-                  <strong>{nombreCompleto(p)}</strong>
+                  <Link to={`/caps/hcu/${p.id}`}><strong>{nombreCompleto(p)}</strong></Link>
                   <span className="item-sub">{edad(p.fechaNac)} años · {p.cronico.join(' + ')}{p.telefono ? ` · ${p.telefono}` : ''}</span>
                   <span className={p.alDia ? 'item-sub' : 'item-tarea'}>
                     {p.ultimoControl ? `Último control: ${fechaCorta(p.ultimoControl)}` : 'Sin control registrado'}

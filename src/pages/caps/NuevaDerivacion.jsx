@@ -43,7 +43,8 @@ export default function NuevaDerivacion() {
       setPaciente(null)
       return
     }
-    db.pacientes.where('dni').equals(dni.dni).first().then((p) => {
+    db.pacientes.where('dni').equals(dni.dni).first().then(async (p) => {
+      if (p?.fusionadoCon) p = await db.pacientes.get(p.fusionadoCon)
       if (!vivo) return
       setPaciente(p ?? null)
       if (p && !form.antecedentes && p.cronico?.length) {

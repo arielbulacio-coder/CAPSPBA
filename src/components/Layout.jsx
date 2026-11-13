@@ -8,11 +8,13 @@ const NAV = {
   caps: [
     ['/caps', 'Derivados', true],
     ['/caps/nueva', 'Nueva derivación'],
+    ['/caps/pacientes', 'Historia clínica'],
     ['/caps/controles', 'Crónicos y controles'],
     ['/cerca', 'CAPS cercanos'],
   ],
   hospital: [
     ['/hospital', 'Agenda', true],
+    ['/hospital/pacientes', 'Historia clínica'],
     ['/hospital/cupos', 'Cupo protegido'],
     ['/cerca', 'Establecimientos cercanos'],
   ],
@@ -20,6 +22,7 @@ const NAV = {
   paciente: [
     ['/paciente', 'Mis turnos', true],
     ['/paciente/salud', 'Mi salud'],
+    ['/paciente/historia', 'Mi historia'],
     ['/cerca', 'CAPS cercanos'],
   ],
 }

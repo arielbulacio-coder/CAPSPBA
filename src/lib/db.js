@@ -1,5 +1,5 @@
 import Dexie from 'dexie'
-import { cargarDatosDemo } from './seed.js'
+import { cargarDatosDemo, cargarHCUDemo } from './seed.js'
 
 // Base local (IndexedDB). Todo lo que se carga en un CAPS sin conexión queda acá
 // y se sincroniza cuando vuelve la señal (ver circuito.js).
@@ -18,6 +18,15 @@ db.version(2).stores({
   efectores: 'id, tipo, partido',
   cupos: 'id, [hospitalId+especialidad], hospitalId, fecha, derivacionId',
   meta: 'clave',
+})
+
+// v3: Historia Clínica Única (encuentros, problemas, medicación) y registro de accesos.
+db.version(3).stores({
+  pacientes: 'id, dni, capsId, fusionadoCon',
+  encuentros: 'id, pacienteId, efectorId, fecha, tipo',
+  problemas: 'id, pacienteId, codigo, estado',
+  medicacion: 'id, pacienteId, activa',
+  accesos: '++id, pacienteId, fecha',
 })
 
 export const ESTADOS = {
@@ -71,6 +80,8 @@ export async function inicializarDB() {
         })
       })
       .catch(() => {})
+    // Bases creadas antes de la HCU: se agregan las historias de ejemplo una vez.
+    if (!(await db.meta.get('hcu'))) await cargarHCUDemo(db)
     return
   }
   await reiniciarDemo(await descargarPadron())
@@ -84,4 +95,5 @@ export async function reiniciarDemo(padron) {
     await db.meta.put({ clave: 'padron', version: p.version, fuente: p.fuente })
   })
   await cargarDatosDemo(db)
+  await cargarHCUDemo(db)
 }

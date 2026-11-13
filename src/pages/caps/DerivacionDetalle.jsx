@@ -75,6 +75,7 @@ export default function DerivacionDetalle() {
           <div>
             <h1>{nombreCompleto(p)}</h1>
             <p className="nota">DNI {p.dni} · {edad(p.fechaNac)} años{p.cronico?.length ? ` · ${p.cronico.join(' + ')}` : ''}</p>
+            <Link to={`/caps/hcu/${p.id}`} className="btn-link">Ver historia clínica →</Link>
           </div>
           <EstadoBadge estado={d.estado} />
         </div>
