@@ -15,7 +15,7 @@ export default function Inicio() {
     caps: await db.efectores.where('tipo').equals('caps').count(),
     partidos: (await db.efectores.orderBy('partido').uniqueKeys()).length,
   }), [])
-  // Sugerencia inicial: el CAPS y el hospital del piloto de demostración.
+  // Sugerencia inicial: el CAPS y el hospital del piloto de demostraciÃ³n.
   const piloto = useLiveQuery(async () => {
     const d = await db.derivaciones.orderBy('creadaEn').first()
     return d ? { caps: d.capsId, hospital: d.hospitalId } : null
@@ -32,7 +32,7 @@ export default function Inicio() {
   }
 
   const reiniciar = async () => {
-    if (confirm('¿Borrar los datos cargados en este equipo y volver a los datos de demostración?')) {
+    if (confirm('Â¿Borrar los datos cargados en este equipo y volver a los datos de demostraciÃ³n?')) {
       await reiniciarDemo()
     }
   }
@@ -41,44 +41,66 @@ export default function Inicio() {
 
   return (
     <div className="inicio">
+      <div className="institucional">
+        <span className="institucional-ministerio">Ministerio de Salud</span>
+        <span className="institucional-provincia">Provincia de Buenos Aires</span>
+      </div>
+
       <header className="inicio-header">
-        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="56" height="56" />
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="64" height="64" />
         <h1>Red CAPS</h1>
-        <p>Derivación de circuito cerrado CAPS → hospital → CAPS<br />Provincia de Buenos Aires</p>
+        <p className="caps-significado">
+          <strong>C</strong>entros de <strong>A</strong>tenciÃ³n <strong>P</strong>rimaria de la <strong>S</strong>alud
+        </p>
+        <p>DerivaciÃ³n de circuito cerrado CAPS â†’ hospital â†’ CAPS</p>
         {resumen && (
-          <p className="nota">{resumen.hospitales} hospitales públicos · {resumen.caps} CAPS · {resumen.partidos} partidos</p>
+          <ul className="inicio-cifras">
+            <li><strong>{resumen.hospitales}</strong><span>hospitales pÃºblicos</span></li>
+            <li><strong>{resumen.caps}</strong><span>CAPS</span></li>
+            <li><strong>{resumen.partidos}</strong><span>partidos</span></li>
+          </ul>
         )}
       </header>
 
+      <img className="inicio-hero" src={`${import.meta.env.BASE_URL}img/hero.jpg`} alt="Centro de AtenciÃ³n Primaria de la Salud y hospital pÃºblico de la provincia" />
+
+      <img className="inicio-hero" src={`${import.meta.env.BASE_URL}img/hero.png`} alt="Centro de Atención Primaria de la Salud y hospital público de la provincia" />
+
       <Link to="/cerca" className="perfil perfil-destacado">
-        <h2>¿Cuál es mi CAPS más cercano?</h2>
-        <p>Usá tu ubicación para encontrar el centro de salud o el hospital público más cerca tuyo.</p>
-        <span className="btn btn-primario">Buscar cerca mío</span>
+        <h2>Â¿CuÃ¡l es mi CAPS mÃ¡s cercano?</h2>
+        <p>UsÃ¡ tu ubicaciÃ³n para encontrar el centro de salud o el hospital pÃºblico mÃ¡s cerca tuyo.</p>
+        <span className="btn btn-primario">Buscar cerca mÃ­o</span>
       </Link>
 
       <Link to="/paciente/ingreso" className="perfil perfil-destacado">
         <h2>Mis turnos y controles</h2>
-        <p>Si te derivaron a un especialista: mirá tu turno, confirmalo o pedí otro día, recibí recordatorios y las indicaciones para tu CAPS.</p>
+        <p>Si te derivaron a un especialista: mirÃ¡ tu turno, confirmalo o pedÃ­ otro dÃ­a, recibÃ­ recordatorios y las indicaciones para tu CAPS.</p>
         <span className="btn btn-primario">Ingresar con mi DNI</span>
       </Link>
 
       <h2 className="seccion">Ingreso de equipos de salud</h2>
       <div className="perfiles">
         <section className={`perfil ${rol === 'caps' ? 'perfil-activo' : ''}`}>
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/caps.jpg`} alt="MÃ©dica atendiendo a una madre y su hijo en un CAPS" loading="lazy" />
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/caps.png`} alt="Médica atendiendo a una madre y su hijo en un CAPS" loading="lazy" />
           <h2>Trabajo en un CAPS</h2>
-          <p>Derivar con turno en el momento, avisar al paciente y saber qué se resolvió.</p>
+          <p>Derivar con turno en el momento, avisar al paciente y saber quÃ© se resolviÃ³.</p>
           {rol !== 'caps' && <button className="btn btn-primario" onClick={() => elegirRol('caps')}>Elegir mi CAPS</button>}
         </section>
 
         <section className={`perfil ${rol === 'hospital' ? 'perfil-activo' : ''}`}>
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/hospital.jpg`} alt="Especialista y enfermera revisando la historia clÃ­nica" loading="lazy" />
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/hospital.png`} alt="Especialista y enfermera revisando la historia clínica" loading="lazy" />
           <h2>Trabajo en un hospital</h2>
           <p>Recibir al paciente con motivo, antecedentes y estudios; contrarreferir en 3 campos.</p>
           {rol !== 'hospital' && <button className="btn btn-primario" onClick={() => elegirRol('hospital')}>Elegir mi hospital</button>}
         </section>
 
         <section className="perfil">
-          <h2>Gestión provincial</h2>
-          <p>Seguir las 3 metas del Plan por partido: espera, control de crónicos e internaciones.</p>
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/administrativo.png`} alt="Personal administrativo asignando un turno" loading="lazy" />
+          <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/administrativo.jpg`} alt="Personal administrativo asignando un turno" loading="lazy" />
+          <h2>GestiÃ³n provincial</h2>
+          <p>Seguir las 3 metas del Plan por partido: espera, control de crÃ³nicos e internaciones.</p>
           <button className="btn btn-primario" onClick={() => entrar('gestion')}>Ver indicadores</button>
         </section>
       </div>
@@ -86,10 +108,10 @@ export default function Inicio() {
       {rol && (
         <section className="tarjeta">
           <header className="tarjeta-header">
-            <h2>{rol === 'caps' ? '¿En qué CAPS trabajás?' : '¿En qué hospital trabajás?'}</h2>
+            <h2>{rol === 'caps' ? 'Â¿En quÃ© CAPS trabajÃ¡s?' : 'Â¿En quÃ© hospital trabajÃ¡s?'}</h2>
             <button className="btn-link" onClick={() => setRol(null)}>Cancelar</button>
           </header>
-          <p className="nota">Tocá “Cerca mío” para que te sugiramos el más cercano, o buscalo por nombre o partido.</p>
+          <p className="nota">TocÃ¡ â€œCerca mÃ­oâ€ para que te sugiramos el mÃ¡s cercano, o buscalo por nombre o partido.</p>
           <BuscadorEfector tipo={rol} valor={efectorId} onElegir={setEfector} />
           <button className="btn btn-primario btn-grande" disabled={!efectorId} onClick={() => entrar(rol, efectorId)}>
             Entrar
@@ -98,9 +120,11 @@ export default function Inicio() {
       )}
 
       <footer className="inicio-pie">
-        <p>Prototipo: los establecimientos son reales; pacientes y derivaciones son ficticios y se guardan sólo en este equipo.</p>
-        <button className="btn-link" onClick={reiniciar}>Reiniciar datos de demostración</button>
+        <p className="inicio-pie-inst">Ministerio de Salud Â· Provincia de Buenos Aires</p>
+        <p>Prototipo: los establecimientos son reales; pacientes y derivaciones son ficticios y se guardan sÃ³lo en este equipo.</p>
+        <button className="btn-link" onClick={reiniciar}>Reiniciar datos de demostraciÃ³n</button>
       </footer>
     </div>
   )
 }
+

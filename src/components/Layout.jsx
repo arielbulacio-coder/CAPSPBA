@@ -41,6 +41,10 @@ export default function Layout() {
   return (
     <div className="app">
       <header className="topbar">
+        <div className="topbar-inst">
+          <span><strong>Ministerio de Salud</strong> · Provincia de Buenos Aires</span>
+          <span className="topbar-inst-caps">CAPS: Centros de Atención Primaria de la Salud</span>
+        </div>
         <div className="topbar-fila">
           <div className="marca">
             <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="28" height="28" />
