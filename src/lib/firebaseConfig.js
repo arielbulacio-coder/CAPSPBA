@@ -17,3 +17,15 @@ export const firebaseConfig = {
 
 /** `VITE_FIREBASE=off` desactiva la nube y la app vuelve a funcionar sólo con la base local. */
 export const nubeHabilitada = env.VITE_FIREBASE !== 'off'
+
+/** Región de las Cloud Functions (functions/index.js). */
+export const REGION = 'southamerica-east1'
+export const FUNCIONES_URL = env.VITE_FUNCIONES_URL ?? `https://${REGION}-${firebaseConfig.projectId}.cloudfunctions.net`
+
+/**
+ * Ingreso del paciente con Mi Argentina. Se activa con VITE_MI_ARGENTINA=on cuando el
+ * Ministerio tenga las credenciales (client_id / client_secret) de Mi Argentina.
+ */
+export const miArgentinaHabilitado = nubeHabilitada && env.VITE_MI_ARGENTINA === 'on'
+/** Ingreso de demostración con DNI + fecha de nacimiento (VITE_INGRESO_DEMO=off lo quita). */
+export const ingresoDemoHabilitado = env.VITE_INGRESO_DEMO !== 'off'

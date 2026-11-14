@@ -36,6 +36,8 @@ export function AppProvider({ children }) {
   const setPerfil = (p) => {
     setPerfilState(p)
     guardar('perfil', p)
+    // El paciente que entró con Mi Argentina sale: se cierra su sesión en Firebase.
+    if (!p) nubeRef.current?.salirPaciente().catch(() => {})
   }
   const toggleSimular = () => {
     setSimular((v) => {

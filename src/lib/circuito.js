@@ -38,7 +38,7 @@ export async function asignarTurno(derivacionId, { despuesDe = null } = {}) {
     if (!d || d.turnoId) return d
     const cupo = await primerCupoLibre(d.hospitalId, d.especialidad, despuesDe)
     const cambios = cupo
-      ? { estado: 'turno_asignado', sincronizada: 1, turnoId: cupo.id, turnoFecha: cupo.fecha, turnoHora: cupo.hora, asignadaEn: Date.now() }
+      ? { estado: 'turno_asignado', sincronizada: 1, turnoId: cupo.id, turnoFecha: cupo.fecha, turnoHora: cupo.hora, asignadaEn: Date.now(), turnoDespuesDe: null }
       : { estado: 'sin_cupo', sincronizada: 1 }
     if (cupo) await db.cupos.update(cupo.id, { derivacionId: d.id })
     await db.derivaciones.update(d.id, cambios)
@@ -101,6 +101,8 @@ export async function registrarRespuesta(derivacionId, respuesta, origen = 'caps
       await db.derivaciones.update(d.id, {
         aviso: { canal: d.aviso.canal, enviado: false, respuesta: null, reprogramaciones: (d.aviso.reprogramaciones ?? 0) + 1 },
         estado: 'pendiente_sync', sincronizada: 0, turnoId: null, turnoFecha: null, turnoHora: null,
+        // Si el turno lo asigna el servidor (paciente desde la app), busca desde el día siguiente.
+        turnoDespuesDe: fechaAnterior,
       })
     } else if (respuesta === 'cancelado') {
       await liberarCupo(d)

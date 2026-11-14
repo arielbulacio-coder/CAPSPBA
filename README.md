@@ -32,7 +32,7 @@ Usa la paleta institucional de la Provincia (cian `#009AAE` / `#007A8A`, fucsia 
 
 - Los **establecimientos son reales** (ver *Padrón de establecimientos*). Pacientes y derivaciones son **ficticios** (piloto de demostración: HIGA General San Martín de La Plata y sus 4 CAPS más cercanos).
 - El backend común es **Firebase** (ver *Backend en Firebase*): el paciente, el CAPS, el hospital y gestión ven los mismos datos desde distintos equipos.
-- El ingreso del paciente con DNI + fecha de nacimiento es sólo para la demo (paciente ficticia: DNI 11234567, 14/03/1957). En producción debe validarse con Mi Argentina / RENAPER.
+- El paciente ingresa con **Mi Argentina** (identidad validada, ver *Ingreso con Mi Argentina*). Mientras no estén las credenciales queda el ingreso de demostración con DNI + fecha de nacimiento (paciente ficticia: DNI 11234567, 14/03/1957).
 - La HCU de este prototipo no reemplaza a una historia clínica electrónica con validez legal: falta firma digital del profesional, control de acceso por rol y matrícula, y la integración con el HIS y la Red Nacional de Interoperabilidad (estándar HL7 FHIR).
 - Los recordatorios con la app cerrada requieren un servidor de notificaciones push; hoy se cubren con el archivo de calendario. Cada hospital recibe una grilla estándar de cupo protegido la primera vez que se le deriva. "Sincronizar" asigna turno en la base local. Para el piloto real hace falta un backend con el padrón de pacientes, integración con el HIS / Red Nacional de Interoperabilidad, autenticación y el marco de la Ley 25.326.
 - La sugerencia de especialidad usa reglas de palabras clave explicables; no toma decisiones clínicas.
@@ -45,19 +45,50 @@ Proyecto `capspba-560af` (Firestore + Authentication + Analytics). La base local
 - **Colecciones:** `pacientes`, `cupos`, `derivaciones`, `controles`, `encuentros`, `problemas`, `medicacion`, `accesos` (una por tabla, mismo ID) y `sistema/red-caps`. El padrón de establecimientos no se sube: sale de `establecimientos.json`.
 - **Subida:** cada cambio local queda marcado `_sync = 0` y se sube en lotes al haber conexión (también al desactivar *Simular sin señal*).
 - **Bajada en tiempo real:** un listener por colección trae lo que cambió desde la última vez (campo `_srv`, hora del servidor).
-- **Conflictos:** gana el último cambio (`_mod`). Dos equipos sin conexión pueden asignar el mismo cupo; en producción la asignación de turnos debería hacerse en el servidor (transacción o Cloud Function).
-- **Primer equipo:** si la nube está vacía, sube los datos de demostración de ese equipo. *Reiniciar datos de demostración* permite reiniciar sólo el equipo (vuelve a bajar la nube) o la nube para todos.
+- **Conflictos:** gana el último cambio (`_mod`).
+- **Turnos asignados por el servidor:** el equipo asigna un turno provisorio (también sin conexión) y la Cloud Function `validarTurnoDerivacion` (`functions/turnos.js`) lo confirma en una transacción. Si otro equipo ya tomó ese cupo, le asigna el siguiente libre y el turno vuelve a "avisar al paciente". También libera el cupo al cancelar o pedir otro día y arma la grilla de cupo protegido de cada hospital. Los clientes no pueden escribir en `cupos`.
+- **Roles:** los equipos de salud usan sesión anónima y ven toda la red. El paciente que entra con Mi Argentina recibe un token con rol `paciente`: sólo baja su propia historia y sólo puede responder a sus turnos, pedir controles y cambiar cómo recibe avisos (`firestore.rules`).
+- **Primer equipo:** si la nube está vacía, sube los datos de demostración de ese equipo. *Reiniciar datos de demostración* permite reiniciar sólo el equipo (vuelve a bajar la nube) o la nube para todos (función `reiniciarDemo`).
 
-Configuración en la consola de Firebase (una vez):
+Configuración (una vez):
 
-1. **Authentication → Sign-in method → Anónimo:** habilitar.
-2. **Firestore Database → Crear base de datos** (ubicación sugerida `southamerica-east1`).
-3. Publicar las reglas de `firestore.rules`: pegarlas en *Firestore → Reglas* o con `npx firebase-tools deploy --only firestore`.
-4. Si la app se publica en GitHub Pages, agregar `<usuario>.github.io` en *Authentication → Settings → Dominios autorizados*.
+1. **Plan Blaze** (pago por uso; tiene cuota gratuita): lo exigen Cloud Functions y Secret Manager.
+2. **Authentication → Sign-in method → Anónimo:** habilitar. Si la app se publica en GitHub Pages, agregar `<usuario>.github.io` en *Authentication → Settings → Dominios autorizados*.
+3. **Firestore Database → Crear base de datos** en `southamerica-east1`.
+4. Publicar reglas, índices y funciones:
+   ```bash
+   cd functions && npm install && cd ..
+   npx firebase-tools login
+   npx firebase-tools deploy --only firestore,functions
+   ```
+   Antes, completar `APP_ORIGENES` en `functions/.env.capspba-560af` con el origen donde se publica la app (por ejemplo `https://<usuario>.github.io`).
+5. Para que la función pueda emitir el token del paciente: en *IAM*, darle a la cuenta de servicio `<número de proyecto>-compute@developer.gserviceaccount.com` el rol **Creador de tokens de cuenta de servicio**.
 
-La configuración web está en `src/lib/firebaseConfig.js` (es pública por diseño; la protección la dan las reglas). `VITE_FIREBASE=off` desactiva la nube.
+La configuración web está en `src/lib/firebaseConfig.js` (es pública por diseño; la protección la dan las reglas). `VITE_FIREBASE=off` desactiva la nube. Pruebas de las funciones: `cd functions && npm test`.
 
-> Las reglas actuales sólo exigen sesión anónima: alcanzan para datos ficticios, **no para datos reales de pacientes**. Para eso hace falta autenticación por rol y matrícula y reglas por efector.
+> **Pendiente para datos reales:** los equipos de salud todavía entran con sesión anónima y pueden ver toda la red. Falta autenticación de profesionales por rol y matrícula (REFEPS) y reglas por efector.
+
+## Ingreso con Mi Argentina
+
+El paciente se identifica con su cuenta de [Mi Argentina](https://argob.github.io/mi-argentina-docs/) (OpenID Connect, plataforma Autenticar). Todo el intercambio ocurre en las Cloud Functions de `functions/miargentina.js`; el `client_secret` nunca llega al navegador.
+
+1. *Ingresar con Mi Argentina* lleva a `miArgentinaInicio`, que redirige a `id.argentina.gob.ar/authorize/` con `state` y `nonce` (scopes `openid profile optional`).
+2. `miArgentinaRetorno` canjea el código en `/token/`, lee `/userinfo/` y exige **identidad validada** (`validation_level` ≥ 3, configurable con `MIARG_NIVEL_MINIMO`) y `do_dni_match_cuil`.
+3. Busca al paciente de la red por DNI (`dni_number`, o el que contiene el `cuil`), incluidos los DNI corregidos al unificar historias, y verifica que coincida la fecha de nacimiento (`birthdate`).
+4. Vuelve a la app con un código de un solo uso (2 minutos) que `canjearIngresoMiArgentina` cambia por un token de Firebase con rol `paciente`.
+
+Si la persona no está registrada en un CAPS, no tiene la identidad validada o los datos no coinciden, la app le explica qué hacer.
+
+**Para habilitarlo:**
+
+1. Pedir las credenciales a la Secretaría de Innovación Pública (por GDE o nota, según la [guía de integración](https://argob.github.io/mi-argentina-docs/doc/integracion.html)), con la URI de redirección `https://southamerica-east1-capspba-560af.cloudfunctions.net/miArgentinaRetorno`.
+2. Cargarlas:
+   ```bash
+   npx firebase-tools functions:secrets:set MIARG_CLIENT_SECRET
+   # MIARG_CLIENT_ID (y MIARG_URL si dan un entorno de homologación) en functions/.env.capspba-560af
+   npx firebase-tools deploy --only functions
+   ```
+3. Publicar la app con `VITE_MI_ARGENTINA=on` (en GitHub: variable del repositorio). Con `VITE_INGRESO_DEMO=off` se quita el ingreso de demostración con DNI + fecha.
 
 ## Padrón de establecimientos
 
