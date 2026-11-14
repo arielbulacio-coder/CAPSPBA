@@ -29,6 +29,89 @@ db.version(3).stores({
   accesos: '++id, pacienteId, fecha',
 })
 
+// v4/v5: backend común en Firebase (Firestore). Cada tabla compartida lleva `_sync`
+// (0 = cambio local sin subir, 1 = igual que en la nube) y `_mod` (hora del último cambio).
+// `accesos` pasa a tener ID de texto para que no choquen los de distintos equipos
+// (Dexie no permite cambiar la clave primaria: se borra en v4 y se recrea en v5).
+db.version(4)
+  .stores({
+    pacientes: 'id, dni, capsId, fusionadoCon, _sync',
+    cupos: 'id, [hospitalId+especialidad], hospitalId, fecha, derivacionId, _sync',
+    derivaciones: 'id, pacienteId, capsId, hospitalId, estado, sincronizada, creadaEn, _sync',
+    controles: 'id, pacienteId, capsId, fecha, estado, _sync',
+    encuentros: 'id, pacienteId, efectorId, fecha, tipo, _sync',
+    problemas: 'id, pacienteId, codigo, estado, _sync',
+    medicacion: 'id, pacienteId, activa, _sync',
+    accesos: null,
+  })
+  .upgrade(async (tx) => {
+    // Lo que ya había en el equipo se toma como base: si la nube está vacía se sube
+    // entera la primera vez; si no, manda lo que está en la nube.
+    for (const t of ['pacientes', 'cupos', 'derivaciones', 'controles', 'encuentros', 'problemas', 'medicacion']) {
+      await tx.table(t).toCollection().modify((o) => {
+        o._sync = 1
+        o._mod = 0
+      })
+    }
+  })
+db.version(5).stores({ accesos: 'id, pacienteId, fecha, _sync' })
+
+/** Tablas que se comparten entre equipos a través de Firestore (una colección por tabla). */
+export const TABLAS_NUBE = ['pacientes', 'cupos', 'derivaciones', 'controles', 'encuentros', 'problemas', 'medicacion', 'accesos']
+
+// Registro de cambios locales. Toda escritura en una tabla compartida queda marcada
+// `_sync = 0` y se sube cuando hay conexión, salvo:
+//  - lo que llega de la nube (claves en `aplicandoRemoto`),
+//  - la confirmación de subida (`update({ _sync: 1 })`),
+//  - los datos de demostración (`escribiendoBase`), que son iguales en todos los equipos.
+const aplicandoRemoto = new Set()
+let escribiendoBase = false
+const oyentes = new Set()
+export const alCambiarLocal = (fn) => {
+  oyentes.add(fn)
+  return () => oyentes.delete(fn)
+}
+const avisar = () => oyentes.forEach((fn) => fn())
+
+for (const nombre of TABLAS_NUBE) {
+  const tabla = db.table(nombre)
+  tabla.hook('creating', function (clave, obj) {
+    if (escribiendoBase || aplicandoRemoto.has(`${nombre}:${clave ?? obj.id}`) || obj._sync === 1) {
+      obj._sync = 1
+      obj._mod ??= 0
+      return
+    }
+    obj._sync = 0
+    obj._mod = Date.now()
+    this.onsuccess = avisar
+  })
+  tabla.hook('updating', function (cambios, clave) {
+    if (escribiendoBase || aplicandoRemoto.has(`${nombre}:${clave}`) || cambios._sync === 1) return undefined
+    this.onsuccess = avisar
+    return { _sync: 0, _mod: Date.now() }
+  })
+}
+
+/** Guarda registros que vienen de la nube sin volver a marcarlos para subir. */
+export async function aplicarRemoto(nombre, registros) {
+  const claves = registros.map((r) => `${nombre}:${r.id}`)
+  claves.forEach((c) => aplicandoRemoto.add(c))
+  try {
+    await db.table(nombre).bulkPut(registros)
+  } finally {
+    claves.forEach((c) => aplicandoRemoto.delete(c))
+  }
+}
+
+async function comoBase(fn) {
+  escribiendoBase = true
+  try {
+    return await fn()
+  } finally {
+    escribiendoBase = false
+  }
+}
+
 export const ESTADOS = {
   pendiente_sync: { label: 'Pendiente de sincronizar', tono: 'gris' },
   sin_cupo: { label: 'En espera de cupo', tono: 'alerta' },
@@ -81,7 +164,7 @@ export async function inicializarDB() {
       })
       .catch(() => {})
     // Bases creadas antes de la HCU: se agregan las historias de ejemplo una vez.
-    if (!(await db.meta.get('hcu'))) await cargarHCUDemo(db)
+    if (!(await db.meta.get('hcu'))) await comoBase(() => cargarHCUDemo(db))
     return
   }
   await reiniciarDemo(await descargarPadron())
@@ -94,6 +177,9 @@ export async function reiniciarDemo(padron) {
     await db.efectores.bulkAdd(p.efectores)
     await db.meta.put({ clave: 'padron', version: p.version, fuente: p.fuente })
   })
-  await cargarDatosDemo(db)
-  await cargarHCUDemo(db)
+  // Los datos de demostración tienen IDs fijos: son la misma base en todos los equipos.
+  await comoBase(async () => {
+    await cargarDatosDemo(db)
+    await cargarHCUDemo(db)
+  })
 }

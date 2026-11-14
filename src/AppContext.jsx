@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { sincronizar } from './lib/circuito.js'
+import { nubeHabilitada } from './lib/firebaseConfig.js'
 
 const Ctx = createContext(null)
 
@@ -28,6 +29,9 @@ export function AppProvider({ children }) {
   const [aviso, setAviso] = useState(null)
   const enLinea = redNavegador && !simularSinConexion
   const anterior = useRef(enLinea)
+  // Backend común (Firebase). Se carga aparte para no demorar la primera pantalla.
+  const nubeRef = useRef(null)
+  const [nube, setNube] = useState({ fase: nubeHabilitada ? 'iniciando' : 'desactivada', error: null, ultimaSync: null })
 
   const setPerfil = (p) => {
     setPerfilState(p)
@@ -47,6 +51,7 @@ export function AppProvider({ children }) {
 
   const sincronizarAhora = useCallback(async () => {
     const r = await sincronizar()
+    nubeRef.current?.subir().catch(() => {})
     if (r.asignadas) notificar(`Sincronizado: ${r.asignadas} turno${r.asignadas > 1 ? 's' : ''} asignado${r.asignadas > 1 ? 's' : ''}.`)
     return r
   }, [notificar])
@@ -62,6 +67,28 @@ export function AppProvider({ children }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!nubeHabilitada) return
+    let baja = null
+    let cancelado = false
+    import('./lib/nube.js')
+      .then((m) => {
+        if (cancelado) return
+        nubeRef.current = m
+        m.iniciarNube({ enLinea })
+        baja = m.suscribirEstado(setNube)
+      })
+      .catch((e) => setNube({ fase: 'error', error: e.message, ultimaSync: null }))
+    return () => {
+      cancelado = true
+      baja?.()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    nubeRef.current?.fijarConexion(enLinea)
+  }, [enLinea])
+
   // Al recuperar la conexión, se envía todo lo cargado sin señal.
   useEffect(() => {
     if (enLinea && !anterior.current) sincronizarAhora()
@@ -73,7 +100,7 @@ export function AppProvider({ children }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Ctx.Provider value={{ perfil, setPerfil, enLinea, redNavegador, simularSinConexion, toggleSimular, sincronizarAhora, notificar, aviso }}>
+    <Ctx.Provider value={{ perfil, setPerfil, enLinea, redNavegador, simularSinConexion, toggleSimular, sincronizarAhora, notificar, aviso, nube, nubeRef }}>
       {children}
     </Ctx.Provider>
   )

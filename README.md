@@ -31,12 +31,33 @@ Usa la paleta institucional de la Provincia (cian `#009AAE` / `#007A8A`, fucsia 
 ## Alcance del prototipo
 
 - Los **establecimientos son reales** (ver *Padrón de establecimientos*). Pacientes y derivaciones son **ficticios** (piloto de demostración: HIGA General San Martín de La Plata y sus 4 CAPS más cercanos).
-- No hay servidor: todo se guarda en el navegador de cada equipo, así que el paciente y el CAPS "se ven" sólo si usan el mismo dispositivo. En producción esto va contra un backend común.
+- El backend común es **Firebase** (ver *Backend en Firebase*): el paciente, el CAPS, el hospital y gestión ven los mismos datos desde distintos equipos.
 - El ingreso del paciente con DNI + fecha de nacimiento es sólo para la demo (paciente ficticia: DNI 11234567, 14/03/1957). En producción debe validarse con Mi Argentina / RENAPER.
 - La HCU de este prototipo no reemplaza a una historia clínica electrónica con validez legal: falta firma digital del profesional, control de acceso por rol y matrícula, y la integración con el HIS y la Red Nacional de Interoperabilidad (estándar HL7 FHIR).
 - Los recordatorios con la app cerrada requieren un servidor de notificaciones push; hoy se cubren con el archivo de calendario. Cada hospital recibe una grilla estándar de cupo protegido la primera vez que se le deriva. "Sincronizar" asigna turno en la base local. Para el piloto real hace falta un backend con el padrón de pacientes, integración con el HIS / Red Nacional de Interoperabilidad, autenticación y el marco de la Ley 25.326.
 - La sugerencia de especialidad usa reglas de palabras clave explicables; no toma decisiones clínicas.
 - Desde la pantalla de inicio se puede *Reiniciar datos de demostración*.
+
+## Backend en Firebase
+
+Proyecto `capspba-560af` (Firestore + Authentication + Analytics). La base local (IndexedDB) sigue siendo la que usa la interfaz, así la app funciona sin conexión; `src/lib/nube.js` la sincroniza con Firestore:
+
+- **Colecciones:** `pacientes`, `cupos`, `derivaciones`, `controles`, `encuentros`, `problemas`, `medicacion`, `accesos` (una por tabla, mismo ID) y `sistema/red-caps`. El padrón de establecimientos no se sube: sale de `establecimientos.json`.
+- **Subida:** cada cambio local queda marcado `_sync = 0` y se sube en lotes al haber conexión (también al desactivar *Simular sin señal*).
+- **Bajada en tiempo real:** un listener por colección trae lo que cambió desde la última vez (campo `_srv`, hora del servidor).
+- **Conflictos:** gana el último cambio (`_mod`). Dos equipos sin conexión pueden asignar el mismo cupo; en producción la asignación de turnos debería hacerse en el servidor (transacción o Cloud Function).
+- **Primer equipo:** si la nube está vacía, sube los datos de demostración de ese equipo. *Reiniciar datos de demostración* permite reiniciar sólo el equipo (vuelve a bajar la nube) o la nube para todos.
+
+Configuración en la consola de Firebase (una vez):
+
+1. **Authentication → Sign-in method → Anónimo:** habilitar.
+2. **Firestore Database → Crear base de datos** (ubicación sugerida `southamerica-east1`).
+3. Publicar las reglas de `firestore.rules`: pegarlas en *Firestore → Reglas* o con `npx firebase-tools deploy --only firestore`.
+4. Si la app se publica en GitHub Pages, agregar `<usuario>.github.io` en *Authentication → Settings → Dominios autorizados*.
+
+La configuración web está en `src/lib/firebaseConfig.js` (es pública por diseño; la protección la dan las reglas). `VITE_FIREBASE=off` desactiva la nube.
+
+> Las reglas actuales sólo exigen sesión anónima: alcanzan para datos ficticios, **no para datos reales de pacientes**. Para eso hace falta autenticación por rol y matrícula y reglas por efector.
 
 ## Padrón de establecimientos
 

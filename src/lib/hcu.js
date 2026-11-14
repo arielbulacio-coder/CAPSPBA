@@ -174,7 +174,7 @@ export async function registrarAcceso(pacienteId, perfil, efectorNombre) {
   const ultimo = await db.accesos.where('pacienteId').equals(pacienteId).reverse().sortBy('fecha')
   const reciente = ultimo.find((a) => a.efectorId === perfil.efectorId && a.rol === perfil.rol)
   if (reciente && Date.now() - reciente.fecha < 30 * 60_000) return
-  await db.accesos.add({ pacienteId, rol: perfil.rol, efectorId: perfil.efectorId ?? null, efector: efectorNombre ?? null, fecha: Date.now() })
+  await db.accesos.add({ id: nuevoId(), pacienteId, rol: perfil.rol, efectorId: perfil.efectorId ?? null, efector: efectorNombre ?? null, fecha: Date.now() })
 }
 
 export const nombreProfesional = () => {

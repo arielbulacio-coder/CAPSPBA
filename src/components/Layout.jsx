@@ -27,8 +27,14 @@ const NAV = {
   ],
 }
 
+const NUBE = {
+  conectando: 'Conectando con la red…',
+  activa: 'Compartido con la red',
+  error: 'Sin acceso a la red: se guarda en el equipo',
+}
+
 export default function Layout() {
-  const { perfil, setPerfil, enLinea, redNavegador, simularSinConexion, toggleSimular, sincronizarAhora, aviso } = useApp()
+  const { perfil, setPerfil, enLinea, redNavegador, simularSinConexion, toggleSimular, sincronizarAhora, aviso, nube } = useApp()
   const navigate = useNavigate()
   const efector = useLiveQuery(() => (perfil?.efectorId ? db.efectores.get(perfil.efectorId) : undefined), [perfil?.efectorId])
   const pendientes = useLiveQuery(() => db.derivaciones.where('sincronizada').equals(0).count(), [], 0)
@@ -69,6 +75,7 @@ export default function Layout() {
         <span>
           {enLinea ? 'Con conexión' : 'Sin conexión — lo que cargues se guarda en el equipo'}
           {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''} de sincronizar`}
+          {enLinea && NUBE[nube?.fase] && <span className="nota" title={nube.error ?? undefined}> · {NUBE[nube.fase]}</span>}
         </span>
         <span className="conexion-acciones">
           {enLinea && pendientes > 0 && (

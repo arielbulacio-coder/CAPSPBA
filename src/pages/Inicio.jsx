@@ -6,7 +6,7 @@ import { db, reiniciarDemo } from '../lib/db.js'
 import BuscadorEfector from '../components/BuscadorEfector.jsx'
 
 export default function Inicio() {
-  const { setPerfil } = useApp()
+  const { setPerfil, nube, nubeRef } = useApp()
   const navigate = useNavigate()
   const [rol, setRol] = useState(null)
   const [efector, setEfector] = useState(null)
@@ -32,8 +32,21 @@ export default function Inicio() {
   }
 
   const reiniciar = async () => {
-    if (confirm('¿Borrar los datos cargados en este equipo y volver a los datos de demostración?')) {
-      await reiniciarDemo()
+    const enRed = nube?.fase === 'activa' && nubeRef.current
+    if (!confirm(enRed
+      ? '¿Borrar los datos cargados en este equipo? Después se vuelven a descargar los datos compartidos de la red.'
+      : '¿Borrar los datos cargados en este equipo y volver a los datos de demostración?')) return
+    const paraTodos = enRed && confirm('¿Reiniciar también los datos compartidos en la nube (Firebase)? Se borran para TODOS los equipos y vuelven los datos de demostración.\n\nAceptar: reiniciar para todos · Cancelar: sólo este equipo')
+    await reiniciarDemo()
+    try {
+      if (paraTodos) {
+        await nubeRef.current.reiniciarNube()
+        alert('Datos de demostración reiniciados para todos los equipos.')
+      } else if (enRed) {
+        await nubeRef.current.volverABajar()
+      }
+    } catch (e) {
+      alert(`No se pudo reiniciar la nube: ${e.message}`)
     }
   }
 
