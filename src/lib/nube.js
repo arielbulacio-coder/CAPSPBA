@@ -8,8 +8,11 @@
 //    recibido, así cada equipo ve lo que cargan los demás casi en tiempo real.
 //  - Conflictos: gana el último cambio (`_mod`). Un cambio local todavía no subido
 //    no se pisa con una versión más vieja de la nube.
-//  - Cupos: los asigna el servidor (functions/turnos.js). El equipo asigna un turno
-//    provisorio sin conexión, pero nunca sube `cupos`: la versión de la nube manda.
+//  - Cupos: nunca se suben con la sincronización general (una grilla local vieja
+//    podría liberar un cupo ajeno). Se reservan y liberan de a uno con transacciones
+//    de Firestore (reservarCupo / liberarCupo), así dos equipos no dan el mismo turno.
+//    Sin conexión el turno queda provisorio y se confirma al volver la señal. Si están
+//    publicadas las Cloud Functions (plan Blaze), functions/turnos.js además lo verifica.
 //  - Sesión: los equipos de salud usan sesión anónima y ven toda la red; el paciente
 //    que ingresa con Mi Argentina recibe un token con rol "paciente" y sólo baja lo suyo.
 //  - Reinicio de la demo: `sistema/red-caps.generacion` cambia y todos los equipos
@@ -17,15 +20,16 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, signInAnonymously, signInWithCustomToken, signOut } from 'firebase/auth'
 import {
-  collection, disableNetwork, doc, enableNetwork, getDoc, initializeFirestore, memoryLocalCache,
-  onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, where, writeBatch,
+  collection, disableNetwork, doc, enableNetwork, getDoc, getDocs, initializeFirestore, limit, memoryLocalCache,
+  onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, where, writeBatch,
 } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
+import { confirmarTurnosProvisorios, fijarReservaRemota } from './circuito.js'
 import { alCambiarLocal, aplicarRemoto, db, TABLAS_NUBE } from './db.js'
-import { firebaseConfig, REGION } from './firebaseConfig.js'
+import { firebaseConfig, funcionesHabilitadas, REGION } from './firebaseConfig.js'
 
 const LOTE = 400 // Firestore admite hasta 500 escrituras por lote.
-/** Sólo el servidor escribe los cupos. */
+/** Los cupos se escriben sólo con transacciones (reservarCupo / liberarCupo). */
 const SOLO_BAJADA = ['cupos']
 /** Lo que puede subir un paciente (las reglas de Firestore limitan qué campos). */
 const SUBIDA_PACIENTE = ['pacientes', 'derivaciones', 'controles']
@@ -85,6 +89,7 @@ export function iniciarNube({ enLinea }) {
     })
     .catch(() => {})
   alCambiarLocal(() => programarSubida())
+  fijarReservaRemota({ reservar: reservarCupo, liberar: liberarCupo })
   fijarConexion(enLinea)
 }
 
@@ -142,6 +147,8 @@ function arrancar() {
     await escucharTablas()
     arrancado = true
     fijar({ fase: conectado ? 'activa' : 'sin-conexion', error: null, ultimaSync: Date.now(), rol: alcance.rol })
+    // Turnos dados sin señal: se reservan ahora en la nube.
+    confirmarTurnosProvisorios().catch((e) => console.warn('[nube] turnos provisorios', e))
   })().finally(() => {
     arrancando = null
   })
@@ -293,6 +300,47 @@ export async function subir({ todo = false } = {}) {
   }
 }
 
+// ---------- Cupo protegido: reservas con transacción ----------
+
+const marca = () => ({ _mod: Date.now(), _srv: serverTimestamp() })
+
+/** Reserva el cupo para la derivación. true = reservado, false = ya lo tiene otra, null = sin red. */
+export async function reservarCupo(cupo, derivacionId) {
+  if (!arrancado || !conectado) return null
+  const ref = doc(fs, 'cupos', String(cupo.id))
+  try {
+    return await runTransaction(fs, async (tx) => {
+      const s = await tx.get(ref)
+      const duenio = s.exists() ? s.data().derivacionId : null
+      if (duenio === derivacionId) return true
+      if (duenio) return false
+      if (s.exists()) tx.update(ref, { derivacionId, ...marca() })
+      else {
+        const { id, hospitalId, especialidad, fecha, hora } = cupo
+        tx.set(ref, { id, hospitalId, especialidad, fecha, hora, derivacionId, ...marca() })
+      }
+      return true
+    })
+  } catch (e) {
+    console.warn('[nube] no se pudo reservar el cupo', cupo.id, e?.code ?? e)
+    return null
+  }
+}
+
+/** Libera el cupo en la nube si todavía es de esa derivación. */
+export async function liberarCupo(cupoId, derivacionId) {
+  if (!arrancado || !conectado) return
+  const ref = doc(fs, 'cupos', String(cupoId))
+  try {
+    await runTransaction(fs, async (tx) => {
+      const s = await tx.get(ref)
+      if (s.exists() && s.data().derivacionId === derivacionId) tx.update(ref, { derivacionId: null, ...marca() })
+    })
+  } catch (e) {
+    console.warn('[nube] no se pudo liberar el cupo', cupoId, e?.code ?? e)
+  }
+}
+
 // ---------- Ingreso del paciente con Mi Argentina ----------
 
 /** Canjea el código que devuelve functions/miargentina.js e inicia la sesión del paciente. */
@@ -339,10 +387,23 @@ export async function volverABajar() {
   await escucharTablas()
 }
 
+/** Borra las colecciones compartidas desde el equipo (sin Cloud Functions). */
+async function borrarColecciones() {
+  for (const nombre of TABLAS_NUBE) {
+    for (;;) {
+      const docs = await getDocs(query(collection(fs, nombre), limit(LOTE)))
+      if (docs.empty) break
+      const lote = writeBatch(fs)
+      docs.forEach((d) => lote.delete(d.ref))
+      await lote.commit()
+    }
+  }
+}
+
 /**
- * Reinicia la demo para TODOS los equipos: el servidor borra las colecciones
- * compartidas, este equipo sube sus datos de demostración y los demás se enteran
- * por el cambio de generación.
+ * Reinicia la demo para TODOS los equipos: se borran las colecciones compartidas
+ * (con la función reiniciarDemo si está publicada, si no desde este equipo), se suben
+ * los datos de demostración y los demás se enteran por el cambio de generación.
  */
 export async function reiniciarNube() {
   if (!conectado) throw new Error('Hace falta conexión para reiniciar los datos de la nube.')
@@ -352,9 +413,16 @@ export async function reiniciarNube() {
   // La nueva generación se fija antes, para no vaciarse a sí mismo al recibir el aviso.
   generacion = (generacion ?? 0) + 1
   await db.meta.put({ clave: 'nube', generacion })
-  await httpsCallable(funciones, 'reiniciarDemo', { timeout: 300_000 })({ generacion })
+  if (funcionesHabilitadas) {
+    await httpsCallable(funciones, 'reiniciarDemo', { timeout: 300_000 })({ generacion })
+  } else {
+    await borrarColecciones()
+    await setDoc(sistemaRef, { generacion, reiniciadoEn: serverTimestamp() }, { merge: true })
+  }
   await db.meta.where('clave').startsWith('nube:').delete()
   await subir({ todo: true })
+  // Los turnos de la demo se reservan en la nube (los cupos no viajan con la subida general).
+  await confirmarTurnosProvisorios()
   await escucharTablas()
 }
 

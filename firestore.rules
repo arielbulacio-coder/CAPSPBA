@@ -7,7 +7,9 @@ rules_version = '2';
 //  - Pacientes que ingresan con Mi Argentina: token con rol "paciente" y su pacienteId
 //    (functions/miargentina.js). Sólo ven su historia y sólo pueden responder a sus
 //    turnos, pedir controles y cambiar cómo reciben avisos.
-//  - Los cupos los asigna únicamente el servidor (functions/turnos.js).
+//  - Los cupos se reservan con transacciones desde la app (src/lib/nube.js): sólo se
+//    toma un cupo libre y sólo se libera el propio. El paciente, sólo para sus derivaciones.
+//  - Los equipos pueden borrar (reinicio de la demo sin Cloud Functions).
 service cloud.firestore {
   match /databases/{database}/documents {
     function autenticado() { return request.auth != null; }
@@ -18,12 +20,24 @@ service cloud.firestore {
     function soloCambia(campos) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
     }
+    function esMiDerivacion(derivacionId) {
+      return derivacionId is string
+        && get(/databases/$(database)/documents/derivaciones/$(derivacionId)).data.pacienteId == miId();
+    }
+    // Reserva: el cupo estaba libre y pasa a una derivación. Liberación: tenía dueño y queda libre.
+    function esReserva() {
+      return resource.data.derivacionId == null && request.resource.data.derivacionId is string;
+    }
+    function esLiberacion() {
+      return resource.data.derivacionId is string && request.resource.data.derivacionId == null;
+    }
 
     match /pacientes/{id} {
       allow read: if esEquipo() || (esPaciente() && resource.data.id == miId());
       allow create: if esEquipo();
       allow update: if esEquipo()
         || (esPaciente() && id == miId() && soloCambia(['canal', 'telefono', '_mod', '_srv']));
+      allow delete: if esEquipo();
     }
 
     match /derivaciones/{id} {
@@ -34,7 +48,8 @@ service cloud.firestore {
         || (esPropio()
           && request.resource.data.pacienteId == miId()
           && request.resource.data.estado in ['confirmado', 'pendiente_sync', 'sin_cupo', 'turno_asignado', 'cancelado']
-          && soloCambia(['aviso', 'estado', 'sincronizada', 'turnoId', 'turnoFecha', 'turnoHora', 'turnoDespuesDe', 'asignadaEn', '_mod', '_srv']));
+          && soloCambia(['aviso', 'estado', 'sincronizada', 'turnoId', 'turnoFecha', 'turnoHora', 'turnoDespuesDe', 'asignadaEn', 'cupoReservado', '_mod', '_srv']));
+      allow delete: if esEquipo();
     }
 
     match /controles/{id} {
@@ -45,21 +60,30 @@ service cloud.firestore {
           && request.resource.data.pacienteId == miId()
           && request.resource.data.estado == 'solicitado'
           && request.resource.data.origen == 'paciente');
+      allow delete: if esEquipo();
     }
 
     match /{coleccion}/{id} {
       allow read: if coleccion in ['encuentros', 'problemas', 'medicacion', 'accesos'] && (esEquipo() || esPropio());
-      allow create, update: if coleccion in ['encuentros', 'problemas', 'medicacion', 'accesos'] && esEquipo();
+      allow create, update, delete: if coleccion in ['encuentros', 'problemas', 'medicacion', 'accesos'] && esEquipo();
     }
 
     match /cupos/{id} {
-      allow read: if esEquipo();
+      allow read: if autenticado();
+      allow create: if (esEquipo() && request.resource.data.derivacionId is string)
+        || (esPaciente() && esMiDerivacion(request.resource.data.derivacionId));
+      allow update: if soloCambia(['derivacionId', '_mod', '_srv']) && (
+        (esEquipo() && (esReserva() || esLiberacion()))
+        || (esPaciente() && (
+          (esReserva() && esMiDerivacion(request.resource.data.derivacionId))
+          || (esLiberacion() && esMiDerivacion(resource.data.derivacionId)))));
+      allow delete: if esEquipo();
     }
 
     match /sistema/red-caps {
       allow read: if autenticado();
-      // El primer equipo crea la nube; los reinicios los hace la función reiniciarDemo.
-      allow create: if esEquipo();
+      // El primer equipo crea la nube; un equipo puede reiniciar la demo (nueva generación).
+      allow create, update: if esEquipo();
     }
     // oidcEstados, ingresos y grillas: sólo el servidor.
   }

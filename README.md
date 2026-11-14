@@ -46,20 +46,22 @@ Proyecto `capspba-560af` (Firestore + Authentication + Analytics). La base local
 - **Subida:** cada cambio local queda marcado `_sync = 0` y se sube en lotes al haber conexión (también al desactivar *Simular sin señal*).
 - **Bajada en tiempo real:** un listener por colección trae lo que cambió desde la última vez (campo `_srv`, hora del servidor).
 - **Conflictos:** gana el último cambio (`_mod`).
-- **Turnos asignados por el servidor:** el equipo asigna un turno provisorio (también sin conexión) y la Cloud Function `validarTurnoDerivacion` (`functions/turnos.js`) lo confirma en una transacción. Si otro equipo ya tomó ese cupo, le asigna el siguiente libre y el turno vuelve a "avisar al paciente". También libera el cupo al cancelar o pedir otro día y arma la grilla de cupo protegido de cada hospital. Los clientes no pueden escribir en `cupos`.
+- **Cupo protegido sin turnos duplicados:** cada cupo se reserva en Firestore con una **transacción** desde la app (`reservarCupo` en `src/lib/nube.js`): si otro equipo ya lo tomó, se prueba el siguiente. Sin conexión el turno queda provisorio y al volver la señal se confirma; si mientras tanto lo tomó otro, se reasigna y el turno vuelve a "avisar al paciente". Las reglas sólo permiten tomar un cupo libre o liberar uno ocupado (el paciente, sólo para sus derivaciones). Funciona en el plan gratuito (Spark).
+- **Cloud Functions (opcional, plan Blaze):** `validarTurnoDerivacion` (`functions/turnos.js`) agrega una verificación del lado del servidor y arma la grilla de cada hospital; `reiniciarDemo` borra la nube del lado del servidor. Se activan con `VITE_FUNCIONES=on`. Sin ellas, el reinicio lo hace el propio equipo.
 - **Roles:** los equipos de salud usan sesión anónima y ven toda la red. El paciente que entra con Mi Argentina recibe un token con rol `paciente`: sólo baja su propia historia y sólo puede responder a sus turnos, pedir controles y cambiar cómo recibe avisos (`firestore.rules`).
 - **Primer equipo:** si la nube está vacía, sube los datos de demostración de ese equipo. *Reiniciar datos de demostración* permite reiniciar sólo el equipo (vuelve a bajar la nube) o la nube para todos (función `reiniciarDemo`).
 
 Configuración (una vez):
 
-1. **Plan Blaze** (pago por uso; tiene cuota gratuita): lo exigen Cloud Functions y Secret Manager.
+1. *(Sólo para Cloud Functions y Mi Argentina)* **Plan Blaze** (pago por uso, con cuota gratuita). Todo lo demás funciona en el plan gratuito Spark.
 2. **Authentication → Sign-in method → Anónimo:** habilitar. Si la app se publica en GitHub Pages, agregar `<usuario>.github.io` en *Authentication → Settings → Dominios autorizados*.
 3. **Firestore Database → Crear base de datos** en `southamerica-east1`.
 4. Publicar reglas, índices y funciones:
    ```bash
    cd functions && npm install && cd ..
    npx firebase-tools login
-   npx firebase-tools deploy --only firestore,functions
+   npx firebase-tools deploy --only firestore            # plan Spark
+   npx firebase-tools deploy --only firestore,functions  # plan Blaze
    ```
    Antes, completar `APP_ORIGENES` en `functions/.env.capspba-560af` con el origen donde se publica la app (por ejemplo `https://<usuario>.github.io`).
 5. Para que la función pueda emitir el token del paciente: en *IAM*, darle a la cuenta de servicio `<número de proyecto>-compute@developer.gserviceaccount.com` el rol **Creador de tokens de cuenta de servicio**.
@@ -77,7 +79,7 @@ El paciente se identifica con su cuenta de [Mi Argentina](https://argob.github.i
 3. Busca al paciente de la red por DNI (`dni_number`, o el que contiene el `cuil`), incluidos los DNI corregidos al unificar historias, y verifica que coincida la fecha de nacimiento (`birthdate`).
 4. Vuelve a la app con un código de un solo uso (2 minutos) que `canjearIngresoMiArgentina` cambia por un token de Firebase con rol `paciente`.
 
-Si la persona no está registrada en un CAPS, no tiene la identidad validada o los datos no coinciden, la app le explica qué hacer.
+Necesita las Cloud Functions (plan Blaze), porque el `client_secret` no puede estar en la app. Si la persona no está registrada en un CAPS, no tiene la identidad validada o los datos no coinciden, la app le explica qué hacer.
 
 **Para habilitarlo:**
 
@@ -88,7 +90,7 @@ Si la persona no está registrada en un CAPS, no tiene la identidad validada o l
    # MIARG_CLIENT_ID (y MIARG_URL si dan un entorno de homologación) en functions/.env.capspba-560af
    npx firebase-tools deploy --only functions
    ```
-3. Publicar la app con `VITE_MI_ARGENTINA=on` (en GitHub: variable del repositorio). Con `VITE_INGRESO_DEMO=off` se quita el ingreso de demostración con DNI + fecha.
+3. Publicar la app con `VITE_FUNCIONES=on` y `VITE_MI_ARGENTINA=on` (en GitHub: variable del repositorio). Con `VITE_INGRESO_DEMO=off` se quita el ingreso de demostración con DNI + fecha.
 
 ## Padrón de establecimientos
 

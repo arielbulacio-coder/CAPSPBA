@@ -26,6 +26,12 @@ export const FUNCIONES_URL = env.VITE_FUNCIONES_URL ?? `https://${REGION}-${fire
  * Ingreso del paciente con Mi Argentina. Se activa con VITE_MI_ARGENTINA=on cuando el
  * Ministerio tenga las credenciales (client_id / client_secret) de Mi Argentina.
  */
-export const miArgentinaHabilitado = nubeHabilitada && env.VITE_MI_ARGENTINA === 'on'
+export const miArgentinaHabilitado = nubeHabilitada && env.VITE_FUNCIONES === 'on' && env.VITE_MI_ARGENTINA === 'on'
 /** Ingreso de demostración con DNI + fecha de nacimiento (VITE_INGRESO_DEMO=off lo quita). */
 export const ingresoDemoHabilitado = env.VITE_INGRESO_DEMO !== 'off'
+
+/**
+ * Cloud Functions publicadas (requieren el plan Blaze). Sin ellas, los cupos se reservan
+ * con transacciones desde la app y el reinicio de la demo lo hace el propio equipo.
+ */
+export const funcionesHabilitadas = nubeHabilitada && env.VITE_FUNCIONES === 'on'

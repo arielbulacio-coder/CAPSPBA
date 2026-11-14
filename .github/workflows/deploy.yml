@@ -28,6 +28,7 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
           # Variables del repositorio (Settings → Secrets and variables → Actions → Variables).
+          VITE_FUNCIONES: ${{ vars.VITE_FUNCIONES }}
           VITE_MI_ARGENTINA: ${{ vars.VITE_MI_ARGENTINA }}
           VITE_INGRESO_DEMO: ${{ vars.VITE_INGRESO_DEMO }}
       - uses: actions/upload-pages-artifact@v3
