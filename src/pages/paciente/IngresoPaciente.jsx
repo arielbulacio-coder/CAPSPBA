@@ -27,6 +27,7 @@ export default function IngresoPaciente() {
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [validando, setValidando] = useState(false)
+  const [avisoPendiente, setAvisoPendiente] = useState(false)
   const canjeado = useRef(false)
 
   // Vuelta de Mi Argentina: ?codigo=… (de un solo uso) o ?error=…
@@ -58,6 +59,11 @@ export default function IngresoPaciente() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const conMiArgentina = () => {
+    if (!miArgentinaHabilitado) {
+      setError(null)
+      setAvisoPendiente(true)
+      return
+    }
     const volver = `${window.location.origin}${window.location.pathname}`
     window.location.assign(`${FUNCIONES_URL}/miArgentinaInicio?volver=${encodeURIComponent(volver)}`)
   }
@@ -90,31 +96,36 @@ export default function IngresoPaciente() {
 
       {error && <p className="banner-alerta" role="alert">{error}</p>}
 
-      {miArgentinaHabilitado && (
-        <div className="tarjeta">
-          <button type="button" className="btn btn-primario btn-grande" onClick={conMiArgentina} disabled={!enLinea}>
-            Ingresar con Mi Argentina
-          </button>
-          <p className="nota">
-            {enLinea
-              ? 'Validamos tu identidad con Mi Argentina (cuenta con identidad validada). No compartimos tu historia con nadie fuera de la red de salud.'
-              : 'Para ingresar con Mi Argentina hace falta conexión.'}
+      <div className="tarjeta">
+        <button type="button" className="btn btn-primario btn-grande" onClick={conMiArgentina} disabled={miArgentinaHabilitado && !enLinea}>
+          Ingresar con Mi Argentina
+        </button>
+        {avisoPendiente ? (
+          <p className="banner-alerta" role="status">
+            El ingreso con Mi Argentina ya está implementado y se habilita cuando el Ministerio obtenga las credenciales
+            de la Secretaría de Innovación Pública. Mientras tanto, usá el ingreso de demostración de abajo.
           </p>
-        </div>
-      )}
+        ) : (
+          <p className="nota">
+            {miArgentinaHabilitado && !enLinea
+              ? 'Para ingresar con Mi Argentina hace falta conexión.'
+              : 'Validamos tu identidad con Mi Argentina (cuenta con identidad validada). No compartimos tu historia con nadie fuera de la red de salud.'}
+          </p>
+        )}
+      </div>
 
       {ingresoDemoHabilitado && (
         <form className="tarjeta" onSubmit={entrar} noValidate>
-          {miArgentinaHabilitado && <h2 className="seccion">Ingreso de demostración</h2>}
+          <h2 className="seccion">Ingreso de demostración</h2>
           <Campo label="DNI" ayuda="Sin puntos.">
-            <input inputMode="numeric" autoComplete="off" value={dni} onChange={(e) => setDni(e.target.value)} placeholder="Ej.: 11234567" autoFocus={!miArgentinaHabilitado} />
+            <input inputMode="numeric" autoComplete="off" value={dni} onChange={(e) => setDni(e.target.value)} placeholder="Ej.: 11234567" />
           </Campo>
           <Campo label="Fecha de nacimiento">
             <input type="date" value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} />
           </Campo>
           <button className="btn btn-primario btn-grande" disabled={enviando}>{enviando ? 'Buscando…' : 'Ingresar'}</button>
           <p className="nota">
-            {miArgentinaHabilitado ? 'Sólo para la demostración, sin validar identidad.' : 'Prototipo: el ingreso real se valida con Mi Argentina.'} Para probar, usá la paciente ficticia
+            Sólo para la demostración, sin validar identidad. Para probar, usá la paciente ficticia
             <strong> DNI 11234567</strong>, nacida el <strong>14/03/1957</strong>.
           </p>
         </form>
