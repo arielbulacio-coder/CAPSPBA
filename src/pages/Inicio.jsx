@@ -108,7 +108,7 @@ export default function Inicio() {
         <section className="perfil">
           <img className="perfil-img" src={`${import.meta.env.BASE_URL}img/administrativo.jpg`} alt="Personal administrativo asignando un turno" loading="lazy" />
           <h2>Gestión provincial</h2>
-          <p>Seguir las 3 metas del Plan por partido: espera, control de crónicos e internaciones.</p>
+          <p>Seguir las 3 metas del Plan por partido y el portafolio de transformación digital con su roadmap 2027–2029.</p>
           <button className="btn btn-primario" onClick={() => entrar('gestion')}>Ver indicadores</button>
         </section>
       </div>

@@ -18,7 +18,11 @@ const NAV = {
     ['/hospital/cupos', 'Cupo protegido'],
     ['/cerca', 'Establecimientos cercanos'],
   ],
-  gestion: [['/gestion', 'Indicadores', true]],
+  gestion: [
+    ['/gestion', 'Indicadores', true],
+    ['/gestion/portafolio', 'Portafolio'],
+    ['/gestion/roadmap', 'Roadmap'],
+  ],
   paciente: [
     ['/paciente', 'Mis turnos', true],
     ['/paciente/salud', 'Mi salud'],

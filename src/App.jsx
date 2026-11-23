@@ -12,6 +12,8 @@ import Agenda from './pages/hospital/Agenda.jsx'
 import Atencion from './pages/hospital/Atencion.jsx'
 import Cupos from './pages/hospital/Cupos.jsx'
 import Indicadores from './pages/gestion/Indicadores.jsx'
+import Portafolio from './pages/gestion/Portafolio.jsx'
+import Roadmap from './pages/gestion/Roadmap.jsx'
 import IngresoPaciente from './pages/paciente/IngresoPaciente.jsx'
 import MisTurnos from './pages/paciente/MisTurnos.jsx'
 import MiSalud from './pages/paciente/MiSalud.jsx'
@@ -53,6 +55,8 @@ export default function App() {
         <Route path="/hospital/atencion/:id" element={<Requiere rol="hospital"><Atencion /></Requiere>} />
         <Route path="/hospital/cupos" element={<Requiere rol="hospital"><Cupos /></Requiere>} />
         <Route path="/gestion" element={<Requiere rol="gestion"><Indicadores /></Requiere>} />
+        <Route path="/gestion/portafolio" element={<Requiere rol="gestion"><Portafolio /></Requiere>} />
+        <Route path="/gestion/roadmap" element={<Requiere rol="gestion"><Roadmap /></Requiere>} />
         <Route path="/paciente" element={<Requiere rol="paciente"><MisTurnos /></Requiere>} />
         <Route path="/paciente/salud" element={<Requiere rol="paciente"><MiSalud /></Requiere>} />
         <Route path="/paciente/historia" element={<Requiere rol="paciente"><MiHistoria /></Requiere>} />
